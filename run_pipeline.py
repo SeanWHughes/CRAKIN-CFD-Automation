@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-Automatic Creo-Ansys Parametric Mesh Link
+CFD DOE Pipeline Main Script
 
 This script will take an Excel file input that specifies combinations of CREO 
 parameter par_values and for each combo (design variant) it will change the input 
@@ -18,60 +18,66 @@ then repeats this for each design variant until all meshes have been exported.
 import creopyson
 import pandas as pd
 import os
+from pathlib import Path
 import subprocess
 import shutil
 import re
 import xlwings as xw
 from types import MethodType
+import sys
+import configparser
 
-# Helper functions
-import validate_file_for_OS
-import validate_excel_creo_params
+# DOE CFD Automation Modules
+import validate_file_for_OS as val
 import creoson_managers as cm
-import param_upstatus
+import creo_parameter_checks as cpc
 
-#%%     USER INPUTS
+#%%     FILEPATH MANAGEMENT
 
-# Working directory
-WORK_DIR = r"C:\Users\Sean\.spyder-py3"
 
-# Creo
-CREO_MODEL_FP = r"C:\Users\Sean\Desktop\Nemours\Flow_Cell_Parameter_Optimization\Creo Geometry\flowcell_po.prt"
-CREO_BATCH_FP = r"C:\Users\Sean\.spyder-py3\nitro_proe_remote.bat"
-CREOSON_BATCH_FP=r"C:\Users\Sean\.spyder-py3\CreosonServerWithSetup-3.0.1-win64\creoson_run.bat"
 
-# Excel sheets
-EXCEL_PAR_INPUT_FP = r"C:\Users\Sean\Desktop\Nemours\Flow_Cell_Parameter_Optimization\DOE\SFU_DOE_parameters.xlsx"
-EXCEL_MESH_OPT_FP = r"C:\Users\Sean\Desktop\Nemours\Flow_Cell_Parameter_Optimization\EXCEL_PREPROCESSING\FlowCell_EdgeBiasing_Calculator.xlsx"
-EXCEL_MESH_VBA_MACRO_FP = r"C:\CreoModels\SolverMacro.bas"
+#%%     Creo Batch File Copy
 
-# ANSYS Workbench
-WB_PROJECT_FP = r"C:\Users\Sean\Desktop\Nemours\Flow_Cell_Parameter_Optimization\WB-CP_FlowCell_ParOpt3.wbpj"
-WB_SCRIPT_FP = r"C:\Users\Sean\.spyder-py3\ansys_wb_meshgen.py"
-WB_EXE_FP = r"C:\Program Files\ANSYS Inc\ANSYS Student\v252\Framework\bin\Win64\RunWB2.exe"
+# (1) Initialize Python config parser and read the config.ini file created by setup_config.py
+config = configparser.ConfigParser()
+config.read("config.ini")
 
-# OpenFOAM
-OUTPUT_DIR = r"C:\Users\Sean\Desktop\HPC_Cluster\Generated_Variants"
-OF_CASE_DIR_TEMPLATE = r"C:\OpenFOAM\case_template"
+# (2) Project Directories
+WORK_DIR = config["PROJECT"]["WORK_DIR"]
+DOE_PROJ_DIR = config["PROJECT"]["DOE_PROJ_DIR"]
+OUTPUT_DIR = Path(DOE_PROJ_DIR) / "Generated_Variants"
+OF_CASE_DIR_TEMPLATE = config["PROJECT"]["OF_CASE_DIR_TEMPLATE"]
 
-#%%     HELPER FUNCTIONS
+# (3) PTC Creo
+CREO_MODEL_FP = config["CREO"]["CREO_MODEL_FP"]
+CREO_BATCH_FP = Path(WORK_DIR) / "nitro_proe_remote.bat"
+CREOSON_DIR = config["CREO"]["CREOSON_DIR"]
+CREOSON_BATCH_FP = Path(CREOSON_DIR) / "creoson_run.bat"
 
-def infer_creo_type(par_value):
-    """ Infers Creo parameter type and returns cleaned parameter value """
-    if isinstance(par_value, bool):
-        return par_value, "boolean"
-    elif isinstance(par_value, int):
-        return par_value, "integer"
-    elif isinstance(par_value, float):
-        # Convert integer-like floats
-        if par_value.is_integer():
-            return int(par_value), "integer"
-        else:
-            return par_value, "double"
-    else:
-        return str(par_value), "string"
+# Check if Creo batch file has been copied to script directory yet
+if not Path(CREO_BATCH_FP).exists():
+    CREO_EXE_FP = config["CREO"]["CREO_EXE_FP"]
     
-#%%     INITIALIZATION/STARTUP ROUTINE
+    # Get the Creo batch file from the same directory as the executable
+    CREO_BIN_DIR = Path(CREO_EXE_FP).resolve().parent
+    CREO_OG_BATCH_FP = Path(CREO_BIN_DIR) / "parametric.bat"
+    
+    if Path(CREO_OG_BATCH_FP).exists():
+        shutil.copy2(CREO_OG_BATCH_FP, CREO_BATCH_FP)
+    else:
+        RuntimeError("ERROR: Could not find the Creo batch file within the same"\
+                     "directory as the parametric.exe file")
+
+# (5) Excel sheets
+EXCEL_PAR_INPUT_FP = Path(DOE_PROJ_DIR) / "DOE_parameters_input.xlsx"
+EXCEL_MESH_OPT_FP = Path(DOE_PROJ_DIR) / "Mesh_EdgeBias_Optimizer.xlsx"
+EXCEL_MESH_VBA_MACRO_FP = Path(DOE_PROJ_DIR) / "SolverMacro.bas"
+
+# (6) ANSYS Workbench
+WB_PROJ_FP = config["ANSYS"]["WB_PROJ_FP"]
+WB_EXE_FP = config["ANSYS"]["wb_exe_fp"]
+
+
 
 # Split file paths into directory and file name
 CREO_MODEL_DIR, CREO_MODEL_NAME = os.path.split(CREO_MODEL_FP)
@@ -79,8 +85,7 @@ CREO_MODEL_DIR, CREO_MODEL_NAME = os.path.split(CREO_MODEL_FP)
 EXCEL_PAR_INPUT_DIR, EXCEL_PAR_INPUT_NAME = os.path.split(EXCEL_PAR_INPUT_FP)
 EXCEL_MESH_OPT_DIR, EXCEL_MESH_OPT_NAME = os.path.split(EXCEL_MESH_OPT_FP)
 
-WB_PROJECT_DIR, WB_PROJECT_NAME = os.path.split(WB_PROJECT_FP)
-WB_SCRIPT_DIR, WB_SCRIPT_NAME = os.path.split(WB_SCRIPT_FP)
+WB_PROJECT_DIR, WB_PROJECT_NAME = os.path.split(WB_PROJ_FP)
 WB_EXE_DIR, WB_EXE_NAME = os.path.split(WB_EXE_FP)
 
 # Change working directory
@@ -89,12 +94,12 @@ os.chdir(WORK_DIR)
 # Check if output directory exists already, otherwise check if valid output directory for OS and create directory if so
 if os.path.exists(OUTPUT_DIR):
     pass
-elif not validate_file_for_OS(OUTPUT_DIR):
+elif not val.validate_file_for_OS(OUTPUT_DIR):
     raise ValueError(f"Specified output directory is invalid: {OUTPUT_DIR}")
 else:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ========== EXCEL PROCESSING ==========
+#%%     EXCEL PROCESSING
 
 # Read Excel parameter input file to dataframe
 param_df = pd.read_excel(EXCEL_PAR_INPUT_FP)
@@ -128,7 +133,7 @@ if macro_name is None:
 
 print(f"STARTUP 1. Opened Excel Files: \n{EXCEL_PAR_INPUT_NAME} \n{EXCEL_MESH_OPT_NAME}")
 
-# ======================================
+#%%     Startup
 
 # Run through Creo|SON startup routine and define client object
 client = cm.creoson_startup(CREO_MODEL_FP,
@@ -140,7 +145,7 @@ client = cm.creoson_startup(CREO_MODEL_FP,
 print("STARTUP 2. Creo CAD file ready for alterations via Creo|SON")
 
 # Check that parameter input sheet matches Creo model parameters
-validate_excel_creo_params(client, parameter_names, True, EXCEL_PAR_INPUT_FP)
+cpc.validate_excel_creo_params(client, parameter_names, True, EXCEL_PAR_INPUT_FP)
 
 #%%     SHUTDOWN TESTING
 
@@ -148,102 +153,6 @@ cm.creoson_shutdown(client,
                     shutdown_creo=True,
                     shutdown_creoson=False,
                     silent=False)
-
-#%%     PARAM_UPSTATUS TESTING
-
-model_name=None
-
-# Default model name to the active model
-if model_name == None:
-    try:
-        model_name = client.file_get_active()["file"]
-    except Exception as exc:
-        raise RuntimeError(f"There is no currently active Creo|SON client: \n{exc}")
-
-# CHECK 1: RELATION-DRIVEN PARAMETER
-# Extract all relations from the Creo model
-relations = client.file_relations_get(model_name)
-
-multistr = ""
-mult_ind = 0
-lhs = ""
-rel_dict = {}
-
-# Extract list of parameter dictionaries (one dict per parameter)
-par_name_dict = client.parameter_list()
-
-# Loop through parameter dictionaries to extract parameter names into a set
-par_names = {param["name"] for param in par_name_dict}
-
-# Normalize the par_names input to a set of strings for searching
-if isinstance(par_names, str):
-    par_names = set(par_names)
-elif isinstance(par_names, (list, set)):
-    if not all(isinstance(element, str) for element in par_names):
-        raise ValueError(f"ERROR: Parameter name(s) input list or set contains non-strings: \n{par_names}")        
-    elif isinstance(par_names, list):
-        par_names = set(par_names)
-else:
-    raise ValueError(f"ERROR: Parameter name(s) input must be a string, list of strings, or set of strings: \n{par_names}")
-
-# Initialize output dictionary with all input parameters unlocked at default
-upstatus_dict = {
-    par: {"locked": False,
-          "reason": "default"}
-    for par in par_names}
-
-# Parse through relations for parameter names
-for line in relations:
-
-    # Ignore comments (delimeters /* & */) and strip whitespace
-    line_clean = re.sub(r"/\*.*?(?:\*/|$)", "", line, re.IGNORECASE).strip()
-    
-    # Skip empty lines
-    if not line_clean:
-        continue
-    
-    # Concatenate multi-line expressions
-    if line_clean.endswith("\\"):
-        line_clean = re.sub(r"\\$", "", line_clean, re.IGNORECASE)
-        multistr += line_clean
-        mult_ind += 1
-        continue
-    elif mult_ind:
-        line_clean = multistr + line_clean
-        mult_ind = 0
-    else:
-        multistr = ""
-    
-    # Detect left-hand side (LHS) and right-hand side (RHS) of relation assignment:
-    rel_match = re.match(r"^(.*?)\s*=\s*(.*)$", line_clean)
-    if rel_match:
-        lhs = rel_match.group(1)
-        rhs = rel_match.group(2)
-        
-        # Store LHS and RHS into a dictionary
-        rel_dict[lhs] = rhs
-    else:
-        raise RuntimeError(f"There was an error parsing the LHS and RHS of the following relation: {line_clean}")
-
-    # Check if the LHS matches any input parameter name(s) and lock if so 
-    if lhs in par_names:
-        upstatus_dict[lhs]["locked"] = True
-        upstatus_dict[lhs]["reason"] = "relation_driven"
-        
-for par in upstatus_dict:
-    if upstatus_dict[par]["reason"] == "relation_driven":
-        rhs = rel_dict[par]
-        
-        # Check if there is a measurement on RHS of relation
-        meas_match = re.match(r"^.*?:FID_(.*)$", rhs, re.IGNORECASE)
-        if meas_match:
-            meas_feat = meas_match.group(1)
-            
-            # Check if there are any features in the tree that match the measurement name
-            if client.feature_list(name=meas_feat):
-                upstatus_dict[par]["reason"] = "measurement_driven"
-
-print(upstatus_dict)
 
 #%%     DESIGN VARIANT LOOP
 
@@ -256,7 +165,7 @@ for col_index, column in enumerate(param_df.columns):
         variant_name = str(column).strip()
         
         # Check if variant name is valid
-        if validate_file_for_OS(variant_name):
+        if val.validate_file_for_OS(variant_name):
             print(f"\n===== GENERATING VARIANT {col_index + 1}/{len(param_df.columns)}: {variant_name} =====")
         else:
             raise ValueError(f"Invalid variant name {variant_name}")
@@ -276,12 +185,9 @@ for col_index, column in enumerate(param_df.columns):
             # Skip empty Excel cells
             if pd.isna(par_value):
                 continue
-    
-            # Determine Creo parameter type
-            par_value, creo_type = infer_creo_type(par_value)
             
-            # Determine if parameter is intended to be updated
-            update_stat = param_upstatus(par_name)
+            # Check parameter status (parameter type and whether it can be updated)
+            status_dict = cpc.param_upstatus(par_name)
             
             # If parameter value is same as last variant, skip it, otherwise update parameter value dictionary accordingly
             if par_value == variant_parameters[par_name]["value"]:
@@ -404,7 +310,7 @@ for col_index, column in enumerate(param_df.columns):
             "-R",
             WB_SCRIPT_FP,
             "-F",
-            WB_PROJECT_FP
+            WB_PROJ_FP
         ]
     
         # Pass variant name as environment variable
