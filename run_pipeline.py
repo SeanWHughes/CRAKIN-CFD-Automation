@@ -34,9 +34,8 @@ import creo_parameter_checks as cpc
 
 #%%     FILEPATH MANAGEMENT
 
+# Normalize all config.ini filepaths
 
-
-#%%     Creo Batch File Copy
 
 # (1) Initialize Python config parser and read the config.ini file created by setup_config.py
 config = configparser.ConfigParser()
