@@ -18,6 +18,7 @@ import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
 import config_managers as cfgm
+import json
 
 #%%     ARCHITECTURE USER-INPUTS
 
@@ -94,7 +95,13 @@ field_info["CREOSON_DIR"] = {
 field_info["WB_PROJ_FP"] = {
     "label": "Workbench Project Files",
     "help_text": (
-        "Select one or more Workbench project files."
+        "The filepath for the ANSYS Workbench \".wbpj\" project file(s) that "
+        "will be used to mesh the CAD geometry. \n\nIf there are any features "
+        "in the CAD geometry that you only want activated or suppressed under "
+        "certain conditions, then you can add another \".wbpj\" file "
+        "and associate it with parameter range(s) so that the script can "
+        "alter the geometry using Creo|SON and then automatically mesh using the "
+        " alternate \".wbpj\" file."
     ),
     "is_file": True,
     "dynamic": True,                                # Dynamic list field 
@@ -122,20 +129,22 @@ except:
 if not Path(SCRIPT_FP).exists():
     print("WARNING: Could not determine the script location. Please set WORK_DIR variable manually.")
 
-# Try to find config.ini file
-config_path = Path("config.ini").resolve()
+# Try to find config.json file
+config_path = Path("config.json").resolve()
+
+# Instantiate config setup app object
 app = cfgm.ConfigSetupApp(config_path=config_path, arch=cfg_arch)
 
-# Load config.ini file it if it exists, otherwise run initializiation routine
+# Load config.json file it if it exists, otherwise run initializiation routine
 if config_path.exists():
-    app.config.read(config_path)
+    app.load_config()
 else:
-    app.init_config(WORK_DIR)
+    app.init_config(work_dir=WORK_DIR)
     
 #%%     GUI WINDOW CONSTRUCTION
 
 # Construct main window object that will display the GUI
-gui = cfgm.GUIBootstrap(GUIwidth=875, GUIheight=600, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
+gui = cfgm.GUIBootstrap(GUIwidth=1000, GUIheight=600, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
 
 # Initialize row index for the main GUI window
 main_row = 0
@@ -146,75 +155,69 @@ ltxt = ("Populate the fields below with the absolute filepaths for your "
 label = ttk.Label(gui.scrollwin, text=ltxt, font=("Segoe UI", 10))
 label.grid(row=main_row, column=0, columnspan=5, pady=20, sticky="")
 
+# Increment main window row index
 main_row += 1
 
-#%%     GUI ROW ENTRY CONSTRUCTION
-
-# Initialize dynamic entries dictionary
-dynamic_entries = {}
+#%%     GUI ENTRY ROW CONSTRUCTION
 
 # Loop through every section and field variable defined within config architecture
 for section, field_vars in cfg_arch.items():
     for var in field_vars:
+        
         # Extract field variable info dictionary
         info = field_info[var]
 
-        # Make a dynamic entry list row if the field variable is set to dynamic
+        # ---------- DYNAMIC ENTRY ROW ---------
         if bool(info.get("dynamic")):
 
-            # Define a frame just for this field variable's dynamic entry rows
-            dyn_frame = ttk.Frame(gui.scrollwin)
-            dyn_frame.grid(row=main_row, column=0, columnspan=5, sticky="w")
-            
-            # Construct the initial template entry row for the dynamic list
-            row_obj = cfgm.EntryRow(
-                window=dyn_frame,
-                window_row_ind=0,
-                row_label=info["label"],
+            # Load previously saved dynamic values from config.ini
+            saved_values = app.config_get(section, var)
+
+            # Create the DynamicRowList object
+            app.dynamic_entries[var] = cfgm.DynamicRowList(
+                window=gui.scrollwin,
+                window_row_ind=main_row,
+                field_var=var,
+                row_label_text=info["label"],
                 help_text=info["help_text"],
-                config_value=""
-            )
-            
-            # Initialize add button object to pass into the DynamicRowList object
-            add_btn = ttk.Button(dyn_frame, text=info.get("add_button_text", "Add Another"))
-
-            # Construct the dynamic row entry list
-            row_list = cfgm.DynamicRowList(
-                frame=dyn_frame,
-                row_template=row_obj,
-                add_button=add_btn,
+                btn_text=info.get("add_button_text", "Add Another"),
                 is_file=info["is_file"],
-                conditional=True
+                conditional=True,
+                config_values=saved_values
             )
 
-            # Construct the add button for the dynamic list
-            add_btn.config(command=row_list.append_row_list)
-            row_list.append_row_list()
-            
-            # Save any new entries created by the user to the dynamic entries dict
-            dynamic_entries[var] = row_list.entries
-            
-            main_row += 1
-        
-        # For a normal entry list row, just create one row
+            # Increment main window row index (main entry + dynamic list frame)
+            main_row += 2
+        # ---------------------------------------
+        # ----------- NORMAL ENTRY ROW ----------
         else:
-            # Extract row values from the config.ini
+            # Extract row value from the config.json
             value = app.config_get(section, var)
 
-            # Create the entry row and insert values from the config.ini if they exist
+            # Instantiate entry row object and store config entry value if it exists
             row_obj = cfgm.EntryRow(
                 window=gui.scrollwin, 
-                window_row_ind=main_row, 
-                row_label=info["label"],
+                window_row_ind=main_row,
+                field_var=var,
+                row_label_text=info["label"],
                 help_text=info["help_text"],
-                config_value=value)
-            main_row = row_obj.add_basic_row(app.entries, is_file=info["is_file"])
+                config_value=value
+            )
+
+            # Construct filepath entry row
+            app.entries_dict[var] = row_obj.fp_row(info["is_file"])
+                
+            # Increment main window row index
+            main_row += 1
+        # ---------------------------------------
+
+#%%     MISC. GUI WIDGETS
 
 # Construct the config save button within the GUI
-save_btn = cfgm.SaveButton(window=gui.scrollwin, config_app=app)
+save_btn = cfgm.SaveButton(window=gui.scrollwin, config_app_obj=app)
 save_btn.place_save_btn(window_row=main_row, window_col=2)
 
-# Create a short explanatory label for executables at bottom of GUI window
+# Construct an explanatory label for executables at bottom of GUI
 ltxt = (
     "Note: For executables, the filepath should be for the actual executable "
     "file, not the shortcut often used to launch the software from Desktop. "
@@ -226,6 +229,8 @@ ltxt = (
 )
 label = ttk.Label(gui.scrollwin, text=ltxt, justify="left", font=("Arial", 8), wraplength=gui.width-50)
 label.grid(row=main_row+1, column=0, columnspan=5)
+
+#%%     GUI RUNTIME
 
 # Display the GUI
 gui.mainwin.mainloop()

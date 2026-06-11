@@ -2,7 +2,14 @@
 """
 
 A large set of classes, methods, and functions used by setup_config.py to 
-customize the config.ini setup GUI.
+customize the config.json setup GUI.
+
+All tkinter widgets (tk and ttk) are instantiated with an object name that
+follows this structure "{purpose}_{widget type}_wg with "_wg" standing for 
+"widget" or also "_wgs" standing for a list of widgets. This reduces how
+succinct the program is, but greatly improves readability for future 
+customization. Similarly, custom class objects are always instantiated with an 
+object name that ends in "_obj".
 
 """
 
@@ -11,14 +18,15 @@ customize the config.ini setup GUI.
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
+import json
 import configparser
 
-#%%     CONFIG.INI SETUP CLASS
+#%%     CONFIG.JSON SETUP CLASS
 
 class ConfigSetupApp:
     """
-    This class is used to package all config.ini related variables into a
-    single app object to simplify GUI-config.ini variable handling.
+    This class is used to package all config.json related variables into a
+    single app object to simplify GUI-config.json variable handling.
     """
     
     def __init__(self, config_path, arch):
@@ -27,79 +35,162 @@ class ConfigSetupApp:
         the config architecture.
         """
 
-        self.entries = {}
+        # Initialize entry dictionaries
+        self.entries_dict = {}
+        self.dynamic_entries = {}
+        
         self.arch = arch
         
-        self.config = configparser.ConfigParser()
         self.config_path = config_path
-
+        self.config_json_dict = {}
+    
+    def load_config(self):
+        """
+        Method for loading an existing config.json file.
+        """
+    
+        with open(self.config_path, "r", encoding="utf-8") as f:
+            self.config_json_dict = json.load(f)
+            
+        # Load previously saved values
+        #if config_values:
+        #    for val in config_values:
+        #        self.append_row_list(config_value=val)
+    
+        # Ensure all expected sections/fields exist
+        for section, fields in self.arch.items():
+            for field in fields:
+    
+                # Normalize dynamic-entry structures
+                field_val = self.config_json_dict[section][field]
+    
+                if isinstance(field_val, list):
+    
+                    cleaned = []
+    
+                    for item in field_val:
+    
+                        # Preserve conditional entries
+                        if isinstance(item, dict):
+                            cleaned.append(item)
+    
+                        # Preserve simple filepath entries
+                        elif isinstance(item, str):
+                            cleaned.append(item)
+    
+                    self.config_json_dict[section][field] = cleaned
+    
     def init_config(self, work_dir):
         """
-        Method for creating a config.ini file with the specified sections and 
+        Method for creating a config.json file with the specified sections and 
         fields from the config architecture. Field values are initialized as
         empty strings except for the working directory variable.
         """
+        
+        self.config_json_dict = {}
     
         for section, fields in self.arch.items():
-            self.config[section] = {
-                field: str(work_dir) if field == "WORK_DIR" else ""
-                for field in fields
-            }
-        
-        if not any("WORK_DIR" in fields for fields in self.arch.values()):
-            raise ValueError('ERROR: Config architecture is missing required "WORK_DIR" entry.')
-            
-        with open(self.config_path, "w") as f:
-            self.config.write(f)
+    
+            self.config_json_dict[section] = {}
+    
+            for field in fields:
+    
+                if field == "WORK_DIR":
+                    self.config_json_dict[section][field] = str(work_dir)
+                else:
+                    self.config_json_dict[section][field] = ""
+    
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            json.dump(self.config_json_dict, f, indent=4)
     
     def config_get(self, section, key):
         """
-        Method for extracting an existing key-value pair from the config.ini 
+        Method for extracting an existing key-value pair from the config.json 
         file if available, otherwise returns empty string
         """
         
         try:
-            return self.config[section][key]
+            return self.config_json_dict[section][key]
         except KeyError:
             return ""
     
     def save_config(self, mainwin):
         """
-        Method for saving the user-input filepaths from the GUI into the 
-        config.ini file that is eventually parsed by the main script pipeline.
+        Save all entries (normal and dynamic) to config.json with sections.
+        Dynamic entries are saved as JSON lists.
         """
-
-        for section, fields in self.arch.items():
-            self.config[section] = {}
-    
-            for field_var in fields:
-                widget = self.entries[field_var]
-                self.config[section][field_var] = widget.get().strip()
-    
-        missing = []
-    
-        # Check for missing fields within the config object
-        for section in self.config:
-            for key, value in self.config[section].items():
-                if not value.strip():
-                    missing.append(f"{section}:{key}")
-                    
-        # Create an error popup if the user tries to save without filling all fields
-        if missing:
-            tk.messagebox.showerror("Missing Fields",
-                                    "Please fill in all fields:\n\n" + 
-                                    "\n".join(missing))
-            return
-    
-        # Write config object contents to a config.ini file
-        with open(self.config_path, "w") as f:
-            self.config.write(f)
-    
-        # Save confirmation message
-        tk.messagebox.showinfo("Success", f"Configuration saved to:\n{self.config_path.resolve()}")
         
-        # Close GUI after user clicks OK
-        mainwin.destroy()
+        self.config_json_dict = {}
+    
+        # Loop through sections
+        for section, fields in self.arch.items():
+            self.config_json_dict[section] = {}
+        
+            for field in fields:
+                print(section)
+                print(self.entries_dict[section])
+                
+                # normal entry
+                if section in self.entries_dict and field in self.entries_dict[section]:
+                    self.config_json_dict[section][field] = self.extract_widget_value(
+                        self.entries_dict[section][field]
+                    )
+                    
+                # dynamic entry
+                elif section in self.dynamic_entries and field in self.dynamic_entries[section]:
+                    dyn_list = self.dynamic_entries[section][field]
+        
+                    values = []
+                    for item in dyn_list.entries_dict:
+        
+                        if isinstance(item, dict):
+                            values.append({
+                                "main": self.extract_widget_value(item["main"]),
+                                "condition": self.extract_widget_value(item.get("condition", {}))
+                            })
+                        else:
+                            values.append(self.extract_widget_value(item))
+        
+                    self.config_json_dict[section][field] = values
+        
+                else:
+                    self.config_json_dict[section][field] = ""
+    
+        # Write JSON to file
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            json.dump(self.config_json_dict, f, indent=4)
+    
+        if mainwin:
+            messagebox.showinfo(
+                "Configuration Saved",
+                f"Configuration successfully saved to {self.config_path}"
+            )
+            mainwin.destroy()
+    
+    def extract_widget_value(self, v):
+        """
+        Private method to safely extract the value from a widget, StringVar, or nested dict.
+        """
+        
+        if isinstance(v, tuple):
+            return self.extract_widget_value(v[1])
+        if isinstance(v, tk.StringVar):
+            return v.get()
+        if isinstance(v, ttk.Entry):
+            return v.get()
+        if isinstance(v, dict):
+            # Recursively extract values from dict
+            return {k: self.extract_widget_value(subv) for k, subv in v.items()}
+        if isinstance(v, list):
+            return [self.extract_widget_value(item) for item in v]
+        elif hasattr(v, "get"):
+            # fallback for other Tk widgets
+            try:
+                return v.get()
+            except TypeError:
+                return str(v)
+        else:        
+            return str(v)
 
 #%%     GUI MAIN WINDOW CLASSES
 
@@ -126,7 +217,7 @@ class GUIBootstrap:
         
         # Automatically apply styling to the GUI
         self.global_font = global_font
-        self.apply_styles()
+        self._apply_styles()
         
         # Make GUI window expandable
         self.mainwin.grid_rowconfigure(0, weight=1)
@@ -137,12 +228,12 @@ class GUIBootstrap:
         scrollable.grid(row=0, column=0, sticky="nsew")
         
         # Define the scrollable window variable
-        self.scrollwin = scrollable.inner
+        self.scrollwin = scrollable.inner_frame_wg
 
-    def apply_styles(self):
+    def _apply_styles(self):
         """
-        Method for applying ttk styling to the GUI. You can customize the
-        styling by altering the style.configure(...) statements below.
+        Private method for applying ttk styling to the GUI. You can customize 
+        the styling here by altering the style.configure(...) statements below.
         """
         
         # Define ttk style object
@@ -189,6 +280,10 @@ class GUIBootstrap:
             padding=(8, 4)
         )
         style.configure(
+            "SmallBrowse.TButton",
+            padding=(2, 1)
+        )
+        style.configure(
             "Save.TButton",
             font=(gfont, 12, "bold"),
             foreground="#3CB371"
@@ -201,59 +296,62 @@ class ScrollableFrame(ttk.Frame):
     This class is used to transform the GUI into a scrollable window.
     """
     
-    def __init__(self, parent, *args, **kwargs):
+    def __init__(self, window, *args, **kwargs):
         """
         Constructor method used to initialize a scrollable frame widget.
         """
         
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(window, *args, **kwargs)
 
         # Allow scrollable frame to be expandable
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # Construct a canvas to hold inner frame
-        self.canvas = tk.Canvas(self, highlightthickness=0)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
+        # Construct a canvas to use as a viewport, displaying a section of the much larger inner frame
+        self.viewport_canvas_wg = tk.Canvas(self, highlightthickness=0)
+        self.viewport_canvas_wg.grid(row=0, column=0, sticky="nsew")
 
-        # --- vertical scrollbar on right ---
-        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.scrollbar.grid(row=0, column=1, sticky="ns")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        # Construct vertical scrollbar on right of window
+        self.scrollbar_wg = ttk.Scrollbar(self, orient="vertical", command=self.viewport_canvas_wg.yview)
+        self.scrollbar_wg.grid(row=0, column=1, sticky="ns")
+        self.viewport_canvas_wg.configure(yscrollcommand=self.scrollbar_wg.set)
 
-        # --- inner frame for widgets ---
-        self.inner = ttk.Frame(self.canvas)
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        # Construct the full inner scrollbar frame that contains all widgets
+        self.inner_frame_wg = ttk.Frame(self.viewport_canvas_wg)
+        self.canvas_window = self.viewport_canvas_wg.create_window((0, 0), window=self.inner_frame_wg, anchor="nw")
 
-        # --- make inner frame resize properly ---
-        self.inner.bind("<Configure>", self._on_frame_configure)
-        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        # Make inner scrollbar frame resize properly
+        self.inner_frame_wg.bind("<Configure>", self._on_frame_configure)
+        self.viewport_canvas_wg.bind("<Configure>", self._on_canvas_configure)
 
-        # --- mouse wheel scrolling ---
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        # Enable mouse wheel scrolling
+        self.viewport_canvas_wg.bind_all("<MouseWheel>", self._on_mousewheel)
 
     def _on_frame_configure(self, event):
         """
-        Method for updating the canvas scroll region to match the size of the inner frame.
+        Private method for updating the canvas scroll region to match the size 
+        of the inner frame.
         """
         
         # Update scrollregion to fit inner frame
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.viewport_canvas_wg.configure(scrollregion=self.viewport_canvas_wg.bbox("all"))
 
     def _on_canvas_configure(self, event):
         """
-        Method for resizing the inner frame to match the width of the canvas widget.
+        Private method for resizing the inner frame to match the width of the 
+        canvas widget.
         """
         
         # Inner frame is always same width as canvas
-        self.canvas.itemconfig(self.canvas_window, width=event.width)
+        self.viewport_canvas_wg.itemconfig(self.canvas_window, width=event.width)
 
     def _on_mousewheel(self, event):
         """
-        Method for handling mouse wheel scrolling events for the canvas widget.
+        Private method for handling mouse wheel scrolling events for the canvas 
+        widget.
         """
         
-        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.viewport_canvas_wg.yview_scroll(int(-1*(event.delta/120)), "units")
 
 class SaveButton:
     """
@@ -261,17 +359,17 @@ class SaveButton:
     that performs the config_save method from ConfigSetupApp.
     """
 
-    def __init__(self, window, config_app):
+    def __init__(self, window, config_app_obj):
         """
         Constructor method used to initialize a save button widget.
         """
 
-        # Instantiate save button object without yet placing it
-        self.button = ttk.Button(
+        # Instantiate save button widget without yet placing it
+        self.save_btn_wg = ttk.Button(
             window,
             text="Save Configuration",
             style="Save.TButton",
-            command=lambda: config_app.save_config(window)
+            command=lambda: config_app_obj.save_config(window)
         )
         
     def place_save_btn(self, window_row, window_col) -> int:
@@ -280,7 +378,7 @@ class SaveButton:
         """
         
         # Position save button and place within window
-        self.button.grid(
+        self.save_btn_wg.grid(
             row=window_row,
             column=window_col,
             columnspan=1,
@@ -291,22 +389,22 @@ class SaveButton:
 
 #%%     GUI ROW ELEMENT CLASSES
 
-class Browser:
+class FPBrowser:
     """
     This class is used to create an OS filepath browser button that autofills
     entry textboxes with the selected filepath.
     """
     
-    def __init__(self, entry):
+    def __init__(self, fp_entry_wg):
         """
-        Constructor method used to initialize new browser instances.
+        Constructor method used to initialize new filepath browser instances.
         """
         
-        self.entry = entry
+        self.fp_entry_wg = fp_entry_wg
     
     def browse_file(self):
         """ 
-        This helper function opens a FILE selection dialog and inserts the 
+        Method for opening a FILE selection dialog and inserts the 
         selected filepath into the specified textbox widget.
         """
         
@@ -315,16 +413,16 @@ class Browser:
         
         # Populate the textbox within the GUI only if the user entered a filepath
         if pathstr:
-            self.entry.delete(0, tk.END)     # Delete previous text
-            self.entry.insert(0, pathstr)    # Replace with new text
+            self.fp_entry_wg.delete(0, tk.END)     # Delete previous text
+            self.fp_entry_wg.insert(0, pathstr)    # Replace with new text
             
             # Show the end of long paths
-            self.entry.icursor(tk.END)
-            self.entry.xview_moveto(1.0)
+            self.fp_entry_wg.icursor(tk.END)
+            self.fp_entry_wg.xview_moveto(1.0)
     
     def browse_folder(self):
         """ 
-        This helper function opens a FOLDER selection dialog and inserts the 
+        Method for opening a FOLDER selection dialog and inserts the 
         selected filepath into the specified textbox widget.
         """
         
@@ -333,12 +431,12 @@ class Browser:
         
         # Populate the textbox within the GUI only if the user entered a filepath
         if pathstr:
-            self.entry.delete(0, tk.END)     # Delete previous text
-            self.entry.insert(0, pathstr)    # Replace with new text
+            self.fp_entry_wg.delete(0, tk.END)     # Delete previous text
+            self.fp_entry_wg.insert(0, pathstr)    # Replace with new text
             
             # Show the end of long paths
-            self.entry.icursor(tk.END)
-            self.entry.xview_moveto(1.0)
+            self.fp_entry_wg.icursor(tk.END)
+            self.fp_entry_wg.xview_moveto(1.0)
        
 class ToolTip:
     """
@@ -346,7 +444,7 @@ class ToolTip:
     user hovers over a widget and disappears when the mouse leaves the widget.
     """
     
-    def __init__(self, widget, text):
+    def __init__(self, pin_label_wg, text):
         """
         Constructor method used to initialize new tooltip object instances 
         and bind display events to the widget.
@@ -354,16 +452,16 @@ class ToolTip:
         
         # Store relevant tooltip objects
         self.tip_window = None      # The tooltip window object reference
-        self.widget = widget        # The widget that activates the tooltip
+        self.pin_label_wg = pin_label_wg        # The label widget that activates the tooltip
         self.text = text            # The text to be displayed by the tooltip
 
-        # Display tooltip when cursor hovers over widget, and remove it when not
-        widget.bind("<Enter>", self.show_tooltip)
-        widget.bind("<Leave>", self.hide_tooltip)
+        # Display tooltip when cursor hovers over label widget, and remove it when not
+        pin_label_wg.bind("<Enter>", self.show_tooltip)
+        pin_label_wg.bind("<Leave>", self.hide_tooltip)
 
     def show_tooltip(self, event=None):
         """
-        This method displays the tooltip when the cursor hovers over the widget object.
+        This method displays the tooltip when the cursor hovers over the label widget object.
         """
 
         # Check that another tooltip window isn't already being displayed (i.e. prevent duplicate windows)
@@ -371,18 +469,18 @@ class ToolTip:
             return
 
         # Create a small window for the tooltip
-        self.tip_window = tw = tk.Toplevel(self.widget)
+        self.tip_window = tw = tk.Toplevel(self.pin_label_wg)
         
         # Remove standard window decor for tooltip (title, min/max buttons, etc.)
         tw.wm_overrideredirect(True)
         
-        # Position tooltip box slightly below and to the right of the widget
-        x = self.widget.winfo_rootx() + 20
-        y = self.widget.winfo_rooty() + 20
+        # Position tooltip box slightly below and to the right of the label widget
+        x = self.pin_label_wg.winfo_rootx() + 20
+        y = self.pin_label_wg.winfo_rooty() + 20
         tw.geometry(f"+{x}+{y}")
 
         # Insert the tooltip text as a window label
-        label = ttk.Label(
+        hovertxt_label_wg = ttk.Label(
             tw,
             text=self.text,
             style="ToolTip.TLabel",
@@ -390,7 +488,7 @@ class ToolTip:
             wraplength=350,
             padding=6
         )
-        label.pack()
+        hovertxt_label_wg.pack()
 
     def hide_tooltip(self, event=None):
         """
@@ -411,33 +509,34 @@ class EntryRow:
     of user-input entries are allowed via the methods below.
     """
     
-    def __init__(self, window, window_row_ind, row_label, show_label=True, help_text="", config_value=""):
+    def __init__(self, window, window_row_ind, field_var, row_label_text, show_label=True, help_text="", config_value=None):
         """
         Constructor method used to initialize new entry row object instances.
         """
         
         self.window = window
         self.row_ind = window_row_ind
-        self.row_label = row_label
+        self.row_label_text = row_label_text
         self.show_label = show_label
         self.help_text = help_text
         self.config_value = config_value
+        self.field_var = field_var
         
         if self.row_ind is None:
             raise ValueError("Row index is None. Check Row initialization.")
 
-    def fp_row(self, is_file=True):
+    def fp_row(self, is_file=True, btn_style="TButton"):
         """
         Method for defining an entry row for OS filepaths.
         """
         
         # COL 0-1: Construct label (col 0) and tooltip (col 1)
         if self.show_label:
-            self.row_labels(label_width=30, label_col=0, tooltip_col=1)
+            self.create_row_labels(label_width=30, label_col=0, tooltip_col=1)
         
         # COL 2: Create textbox entry
-        entry = ttk.Entry(self.window, width=70)
-        entry.grid(
+        fp_entry_wg = ttk.Entry(self.window, width=90)
+        fp_entry_wg.grid(
             row=self.row_ind,
             column=2,
             padx=(5, 10),
@@ -445,37 +544,37 @@ class EntryRow:
             sticky="ew"
         )
         
-        # COL 2: Pre-fill entry with previous value from config.ini file if it exists
+        # COL 2: Pre-fill entry with previous value from config.json file if it exists
         if self.config_value:
-            entry.insert(0, self.config_value)
+            fp_entry_wg.insert(0, self.config_value)
             
             # Show the end of long paths
-            entry.icursor(tk.END)
-            entry.xview_moveto(1.0)
+            fp_entry_wg.icursor(tk.END)
+            fp_entry_wg.xview_moveto(1.0)
         
-        # COL 3: Instantiate browser button object
-        browser = Browser(entry)
+        # COL 3: Instantiate filepath browser button object
+        browser_obj = FPBrowser(fp_entry_wg)
         
         # COL 3: Construct textbox browse button for file or directory search accordingly
         if is_file:
             # Make button browse OS for files using helper func
-            btn = ttk.Button(self.window, text="Browse", command=browser.browse_file)
+            browse_btn_wg = ttk.Button(self.window, text="Browse", command=browser_obj.browse_file, style=btn_style)
         else:
             # Make button browse OS for directories using helper func
-            btn = ttk.Button(self.window, text="Browse", command=browser.browse_folder)
+            browse_btn_wg = ttk.Button(self.window, text="Browse", command=browser_obj.browse_folder, style=btn_style)
 
-        btn.grid(row=self.row_ind, column=3, padx=5, pady=4)
+        browse_btn_wg.grid(row=self.row_ind, column=3, padx=5, pady=4)
     
         # COL 4:# Create a label to specify whether a file or directory is required
         if self.show_label:
-            type_label = ttk.Label(
+            type_label_wg = ttk.Label(
                 self.window,
                 text="File" if is_file else "Directory",
                 style="EntryType.TLabel"
             )
-            type_label.grid(row=self.row_ind, column=4, padx=5)
+            type_label_wg.grid(row=self.row_ind, column=4, padx=5)
         
-        return entry
+        return fp_entry_wg
     
     def condition_row(self):
         """
@@ -484,12 +583,12 @@ class EntryRow:
 
         # COL 0-1: Construct label (col 0) and tooltip (col 1)
         if self.show_label:
-            self.row_labels(label_width=30, label_col=0, tooltip_col=1) 
+            self.create_row_labels(label_width=30, label_col=0, tooltip_col=1) 
          
         # COL 2: Create a frame to allow the conditional statement input columns 
         # to fit side-by-side within a single main window column
-        cond_frame = ttk.Frame(self.window)
-        cond_frame.grid(row=self.row_ind, column=2, padx=20)
+        cond_frame_wg = ttk.Frame(self.window)
+        cond_frame_wg.grid(row=self.row_ind, column=2, padx=20)
         
         # Define options for boolean (relational) operators
         OPS = ["", "<", "<=", ">", ">=", "==", "!="]
@@ -499,181 +598,270 @@ class EntryRow:
         cond_col = 0
         
         # COL 2.0: Create entry box for the left-hand side (LHS) value in boolean statement
-        LHS_value = ttk.Entry(cond_frame, width=8)
-        LHS_value.grid(row=cond_row, column=cond_col, padx=2)
+        LHS_entry_wg = ttk.Entry(cond_frame_wg, width=8)
+        LHS_entry_wg.grid(row=cond_row, column=cond_col, padx=2)
         cond_col += 1
 
         # COL 2.1: Create option menu on LHS for boolean operators
-        LHS_op = tk.StringVar()       # Entry variable is recognized as a string
-        LHS_op_box = ttk.Combobox(    # Option box defines allowable strings,
-            cond_frame,               # the user must select one to assign
-            textvariable=LHS_op,      # as the value for the entry variable
+        LHS_op = tk.StringVar()         # Entry variable is recognized as a string
+        LHS_op_wg = ttk.Combobox(       # Option box defines allowable strings,
+            cond_frame_wg,              # the user must select one to assign
+            textvariable=LHS_op,        # as the value for the entry variable
             values=OPS,
             width=3,
             state="readonly"
         )
-        LHS_op_box.grid(row=cond_row, column=cond_col, padx=2)
-        LHS_op_box.configure(justify="center")
+        LHS_op_wg.grid(row=cond_row, column=cond_col, padx=2)
+        LHS_op_wg.configure(justify="center")
         cond_col += 1
 
         # COL 2.2: Create entry box for the center value in boolean statement
         # (for a simple boolean this is often just the parameter name (e.g. it would be "param" for 3 < param < 5))
-        center_value = ttk.Entry(cond_frame, width=25)
-        center_value.grid(row=cond_row, column=cond_col, padx=5)
+        center_entry_wg = ttk.Entry(cond_frame_wg, width=25)
+        center_entry_wg.grid(row=cond_row, column=cond_col, padx=5)
         cond_col += 1
 
         # COL 2.3: Create option menu on right-hand side (RHS) for boolean operators
-        RHS_op = tk.StringVar()       # Entry variable is recognized as a string
-        RHS_op_box = ttk.Combobox(    # Option box defines allowable strings, 
-            cond_frame,               # the user must select one to assign   
-            textvariable=RHS_op,      # as the value for the entry variable
+        RHS_op = tk.StringVar()         # Entry variable is recognized as a string
+        RHS_op_wg = ttk.Combobox(       # Option box defines allowable strings, 
+            cond_frame_wg,              # the user must select one to assign   
+            textvariable=RHS_op,        # as the value for the entry variable
             values=OPS,
             width=3,
             state="readonly"
         )
-        RHS_op_box.grid(row=cond_row, column=cond_col, padx=2)
-        RHS_op_box.configure(justify="center")
+        RHS_op_wg.grid(row=cond_row, column=cond_col, padx=2)
+        RHS_op_wg.configure(justify="center")
         cond_col += 1
         
         # COL 2.4: Create entry box for the RHS value in boolean statement
-        RHS_value = ttk.Entry(cond_frame, width=8)
-        RHS_value.grid(row=cond_row, column=cond_col, padx=2)
+        RHS_entry_wg = ttk.Entry(cond_frame_wg, width=8)
+        RHS_entry_wg.grid(row=cond_row, column=cond_col, padx=2)
     
-        
-        def update_entries(*args):
+        def update_condition_status(*args):
             """
-            A short helper function that disables the opposite sides entry 
-            variable if a single-sided boolean operator is used (== or !=).
+            A short helper function that prevents poorly defined boolean
+            statements from being entered by the user by disabling entries.
             """
-            if LHS_op.get() in ["==", "!="]:
-                RHS_value.config(state="disabled")
-                center_value.config(state="normal")
-            elif RHS_op.get() in ["==", "!="]:
-                LHS_value.config(state="disabled")
-                center_value.config(state="normal")
+            
+            # Group similar boolean relational operators
+            eq_rels = ["==", "!="]
+            less_rels = ["<", "<="]
+            more_rels = [">", ">="]
+            
+            # Reset all entry statuses before updating (prevents erroneous double disabling)
+            LHS_entry_wg.config(state="normal")
+            RHS_entry_wg.config(state="normal")
+            center_entry_wg.config(state="normal")
+            
+            # Extract LHS and RHS operator values
+            lhs = LHS_op.get()
+            rhs = RHS_op.get()
+            
+            # If LHS is a one-sided operator disable RHS
+            if lhs in eq_rels:
+                RHS_entry_wg.config(state="disabled")
+                center_entry_wg.config(state="normal")
+            # If RHS is a one-sided operator disable LHS
+            elif rhs in eq_rels:
+                LHS_entry_wg.config(state="disabled")
+                center_entry_wg.config(state="normal")
+            # If RHS and LHS are functionally the same operator
+            elif lhs in less_rels and rhs in more_rels:
+                LHS_entry_wg.config(state="disabled")
+                center_entry_wg.config(state="normal")
+            elif lhs in more_rels and rhs in less_rels:
+                LHS_entry_wg.config(state="disabled")
+                center_entry_wg.config(state="normal")
+            # Keep everything normal if otherwise
             else:
-                LHS_value.config(state="normal")
-                RHS_value.config(state="normal")
-                center_value.config(state="normal")
+                LHS_entry_wg.config(state="normal")
+                RHS_entry_wg.config(state="normal")
+                center_entry_wg.config(state="normal")
         
-        LHS_op.trace_add("write", update_entries)
-        RHS_op.trace_add("write", update_entries)
+        # Update the status of all entries in the row anytime a relational operator is changed
+        LHS_op.trace_add("write", update_condition_status)
+        RHS_op.trace_add("write", update_condition_status)
+        
+        # Construct output dict containing all conditional entry widgets
+        raw_condition_dict = {                      # Object type...
+            "LHS_entry_wg": LHS_entry_wg,           # tk.Entry()
+            "LHS_op": LHS_op,                       # tk.StringVar()
+            "center_entry_wg": center_entry_wg,     # tk.Entry()
+            "RHS_op": RHS_op,                       # tk.StringVar()
+            "RHS_entry_wg": RHS_entry_wg            # tk.Entry()
+        }    
+        
+        # Initialize cleaned condition dictionary
+        cond_dict = {}
+        
+        # Loop through all condition value keys
+        for key in ("LHS_entry_wg", "center_entry_wg", "RHS_entry_wg"):
+            # Extract entry widget
+            widget = raw_condition_dict[key]
+            
+            # If not disabled, then pass entry widget to cleaned dict
+            if widget.cget("state") != "disabled":
+                cond_dict[key] = widget.get()
+                
+                if key == "LHS_entry_wg":
+                    cond_dict["LHS_op"] = raw_condition_dict["LHS_op"].get()
+                if key == "RHS_entry_wg":
+                    cond_dict["RHS_op"] = raw_condition_dict["RHS_op"].get()
 
-        # Return a dictionary containing all the conditional entry widgets
-        return {"LHS_value": LHS_value,
-                "LHS_op": LHS_op,
-                "center_value": center_value,
-                "RHS_op": RHS_op,
-                "RHS_value": RHS_value}
-
-    def add_basic_row(self, entries=None, is_file=True) -> int:
-        """ 
-        This helper function adds a single textbox row in the GUI for the user 
-        to enter a new file or directory filepath, it then adds to the row index
-        and returns the row number for the next textbox.
-        """
-        
-        entry = self.fp_row(is_file)
+        return cond_dict
     
-        # Add current row's user-input text into the entries dictionary
-        entries[self.row_label] = entry
-        
-        return self.row_ind + 1
-    
-    def row_labels(self, label_width, label_col, tooltip_col):
+    def create_row_labels(self, label_width, label_col, tooltip_col):
         """
         This helper function creates the label and helper tooltip for a row.
         """
         
-        # Create label for the textbox on leftmost side of GUI row (col 0)
-        rowlabel = ttk.Label(
+        # Create short entry row description label
+        row_label_wg = ttk.Label(
             self.window,
-            text=self.row_label,
+            text=self.row_label_text,
             style="Header.TLabel",
             anchor="e",
             width=label_width
         )
-        rowlabel.grid(row=self.row_ind, column=label_col, padx=5, pady=5, sticky="e")
+        row_label_wg.grid(row=self.row_ind, column=label_col, padx=5, pady=5, sticky="e")
         
-        # Create label for help icon (col 1)
-        help_label = ttk.Label(
+        # Create help icon label
+        help_label_wg = ttk.Label(
             self.window,
             text="ⓘ",
             style="ToolTip.TLabel",
             cursor="hand2"
         )
-        help_label.grid(row=self.row_ind, column=tooltip_col, sticky="w")
+        help_label_wg.grid(row=self.row_ind, column=tooltip_col, sticky="w")
         
-        # Create hoverable tooltip description for what text to enter in textbox
-        ToolTip(help_label, self.help_text)
+        # Turn help icon into a hoverable, detailed description for what text to enter in textbox
+        ToolTip(help_label_wg, self.help_text)
 
 class DynamicRowList:
     """
     This class is used to create a row entry that can be dynamically expanded 
-    by the user via buttons to include multiple internal sub-rows (which are 
-    defined by the EntryRow class)
+    by the user via buttons to include multiple internal sub-rows.
     """
     
-    def __init__(self, frame, row_template, add_button, is_file=True, conditional=False):
+    def __init__(self, window, window_row_ind, field_var, row_label_text, show_label=True, help_text="", btn_text="Add Another", is_file=True, conditional=False, config_values=None):
         """
         Constructor method used to initialize a dynamic row list object.
         """
         
-        self.entries = []
+        # Initialize entry list
+        self.dynamic_entries_dict = []
+        self.main_entry_wg = None
+        self.field_var = field_var
         
-        # Dynamic row frame
-        self.frame = frame
-        self.frame_row = 0
+        # External window variables
+        self.window = window
+        self.win_row = window_row_ind
+        self.win_col = 2
+        self.win_colspan = 1
+        self.row_label_text = row_label_text
+        self.help_text = help_text
         
-        # Variables extracted from first row of the list (which is used as the template for all additional rows in the list to duplicate)
-        self.row_template = row_template
-        self.row_label = self.row_template.row_label
-        self.help_text = self.row_template.help_text
-        
+        # Dynamic Row List Variables
         self.is_file = is_file
         self.conditional = conditional
+        self.btn_text = btn_text
         
-        self.add_button = add_button
+        # Instantiate first entry row object directly within parent window
+        main_row_obj = EntryRow(
+            window=self.window,
+            window_row_ind=self.win_row,
+            field_var=field_var,
+            row_label_text=self.row_label_text,
+            show_label=show_label,
+            help_text=self.help_text,
+            config_value=""
+        )
+
+        # Construct filepath row
+        self.main_entry_wg = main_row_obj.fp_row(is_file=self.is_file)
+        
+        # Construct internal dynamic row frame for all potential subsequent rows
+        self.frame_wg = ttk.Frame(self.window)
+        self.frame_wg.grid(
+            row=self.win_row + 1, 
+            column=self.win_col, 
+            columnspan=self.win_colspan, 
+            sticky=""
+        )
+        
+        # Initialize internal row counter
+        self.frame_row = 0
+
+        # Instantiate dynamic "add row" button within the frame
+        self.add_btn_wg = ttk.Button(
+            self.frame_wg,
+            text=self.btn_text,
+            command=self.append_row_list
+        )
+        self.add_btn_wg.grid(row=self.frame_row + 1, column=2, pady=5, sticky="")
  
-    def append_row_list(self):
+    def append_row_list(self, config_value=""):
         """
         Method for adding a new entry row to the dynamic row list.
         """
+
+        # ---------- (1) FILEPATH ROW -----------
+        # Create an additional filepath entry row in the internal frame
         
-        if self.frame_row != 0:
-            entry_label = "..."
-            entry_width = 65
-        else:
-            entry_label = self.row_label
-            entry_width = 70
+        # I: Instantiate entry row object
+        fp_row_obj = EntryRow(
+            window=self.frame_wg,
+            window_row_ind=self.frame_row,
+            field_var=self.field_var,
+            row_label_text="",
+            show_label=False,
+            help_text="",
+            config_value=config_value
+        )
+
+        # II: Construct filepath row
+        fp_entry_wg = fp_row_obj.fp_row(
+            is_file=self.is_file,
+            btn_style="SmallBrowse.TButton"
+        )
+        fp_entry_wg.config(width=70)
         
-        row_obj = EntryRow(window=self.frame,
-                           window_row_ind=self.frame_row,
-                           row_label=entry_label,
-                           show_label=True,
-                           help_text=self.help_text,
-                           config_value="")
-        
-        entry = row_obj.fp_row(is_file=self.is_file)
-        entry.config(width=entry_width)
-    
-        self.entries.append(entry)
-        
+        # III: Increment frame row index
         self.frame_row += 1
+        # ---------------------------------------
+
+        # ---------- (2) CONDITION ROW ----------
+        # Create an additional condition entry row in the internal frame
         
-        if self.conditional and self.frame_row != 1:
-            cond_row_obj = EntryRow(window=self.frame,
-                               window_row_ind=self.frame_row,
-                               row_label=entry_label,
-                               show_label=True,
-                               help_text="",
-                               config_value="")
-            cond_entries = cond_row_obj.condition_row()
+        # Only place row if specified
+        if self.conditional:
+
+            # I: Instantiate entry row object
+            cond_row_obj = EntryRow(
+                window=self.frame_wg,
+                window_row_ind=self.frame_row,
+                field_var=self.field_var,
+                row_label_text="",
+                show_label=False,
+                help_text="",
+                config_value=""
+            )
+
+            # II: Construct condition row and extract cond
+            cond_dict = cond_row_obj.condition_row()
             
-            self.entries.append(cond_entries)
+            # III: Increment frame row index
             self.frame_row += 1
+        # ---------------------------------------
+            
+        # Store all entry widgets within the widget list
+        self.dynamic_entries_dict.append({
+            "main": fp_entry_wg,
+            "condition": cond_dict if self.conditional else None
+        })
         
-        if self.add_button:
-            self.add_button.grid(row=self.frame_row+1, column=2, pady=5)
-    
-        return entry
+        # Reposition add entry button
+        self.add_btn_wg.grid(row=self.frame_row + 1, column=2, pady=5, sticky="")
+
+        return self.dynamic_entries_dict

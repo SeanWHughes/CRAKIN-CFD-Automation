@@ -1,0 +1,16 @@
+{
+    "PROJECT": {
+        "WORK_DIR": "",
+        "DOE_PROJ_DIR": "",
+        "OF_CASE_DIR_TEMPLATE": ""
+    },
+    "CREO": {
+        "CREO_MODEL_FP": "",
+        "CREO_EXE_FP": "",
+        "CREOSON_DIR": ""
+    },
+    "ANSYS": {
+        "WB_PROJ_FP": "",
+        "WB_EXE_FP": ""
+    }
+}
