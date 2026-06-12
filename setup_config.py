@@ -42,7 +42,7 @@ field_info["WORK_DIR"] = {
         "the script. However, if the script couldn't find the directory, you "
         "can always enter the working directory here instead."
     ),
-    "is_file": False,
+    "mode": "folder",
 }
 field_info["DOE_PROJ_DIR"] = {
     "label": "DOE Project Directory",
@@ -50,7 +50,7 @@ field_info["DOE_PROJ_DIR"] = {
         "The directory where the script will store the parameter input sheet, "
         "mesh optimization sheet, VBA macros, and all generated variant meshes."
     ),
-    "is_file": False,
+    "mode": "folder",
 }
 field_info["OF_CASE_DIR_TEMPLATE"] = {
     "label": "OpenFOAM Case Directory Template",
@@ -62,7 +62,7 @@ field_info["OF_CASE_DIR_TEMPLATE"] = {
         "(Note: This script assumes that case setup is otherwise identical for "
         "all generated variants.)"
     ),
-    "is_file": False,
+    "mode": "folder",
 }
 field_info["CREO_MODEL_FP"] = {
     "label": "Creo Parametric CAD Model File",
@@ -74,14 +74,14 @@ field_info["CREO_MODEL_FP"] = {
         "remove the numbered portion of the file extension yourself to be sure: "
         "e.g., my_part.prt.23 --> my_part.prt)"
     ),
-    "is_file": True,
+    "mode": "file",
 }
 field_info["CREO_EXE_FP"] = {
     "label": "Creo Parametric Executable",
     "help_text": (
         "The filepath for the 'parametric.exe' file."
     ),
-    "is_file": True,
+    "mode": "file",
 }
 field_info["CREOSON_DIR"] = {
     "label": "CreoSON Directory",
@@ -90,7 +90,7 @@ field_info["CREOSON_DIR"] = {
         "supporting files.\n\n"
         "(e.g., C:\\Program Files\\CreosonServerWithSetup-3.0.1-win64)"
     ),
-    "is_file": False,
+    "mode": "folder",
 }
 field_info["WB_PROJ_FP"] = {
     "label": "Workbench Project Files",
@@ -103,7 +103,7 @@ field_info["WB_PROJ_FP"] = {
         "alter the geometry using Creo|SON and then automatically mesh using the "
         " alternate \".wbpj\" file."
     ),
-    "is_file": True,
+    "mode": "file",
     "dynamic": True,                                # Dynamic list field 
     "add_button_text": "Add another .wbpj file",    # Dynamic list button
 }
@@ -112,7 +112,7 @@ field_info["WB_EXE_FP"] = {
     "help_text": (
         "The filepath for the Workbench 'RunWB2.exe' file."
     ),
-    "is_file": True,
+    "mode": "file",
 }
 
 #%%     CONFIG INITIALIZATION
@@ -136,9 +136,7 @@ config_path = Path("config.json").resolve()
 app = cfgm.ConfigSetupApp(config_path=config_path, arch=cfg_arch)
 
 # Load config.json file it if it exists, otherwise run initializiation routine
-if config_path.exists():
-    app.load_config()
-else:
+if not config_path.exists():
     app.init_config(work_dir=WORK_DIR)
     
 #%%     GUI WINDOW CONSTRUCTION
@@ -152,7 +150,7 @@ main_row = 0
 # Create a short instructional label at top of GUI
 ltxt = ("Populate the fields below with the absolute filepaths for your "
         "CFD setup (manually or using the browser dialogs).")
-label = ttk.Label(gui.scrollwin, text=ltxt, font=("Segoe UI", 10))
+label = ttk.Label(gui.scroll_frame, text=ltxt, font=("Segoe UI", 10))
 label.grid(row=main_row, column=0, columnspan=5, pady=20, sticky="")
 
 # Increment main window row index
@@ -173,17 +171,27 @@ for section, field_vars in cfg_arch.items():
             # Load previously saved dynamic values from config.ini
             saved_values = app.config_get(section, var)
 
+            dyn_entry_one = cfgm.EntryRow(
+                container=gui.scroll_frame,
+                field_var=var,
+                row_ind=main_row,
+                norm_label_kwargs={
+                    "widget": {"text": info["label"]}
+                },
+                tooltip_label_kwargs={
+                    "hover_label": {"text": info["help_text"]}
+                }
+            )
+                                   
+
             # Create the DynamicRowList object
             app.dynamic_entries[var] = cfgm.DynamicRowList(
-                window=gui.scrollwin,
-                window_row_ind=main_row,
-                field_var=var,
-                row_label_text=info["label"],
-                help_text=info["help_text"],
-                btn_text=info.get("add_button_text", "Add Another"),
-                is_file=info["is_file"],
+                dyn_entry_one,
+                show_label=False,
+                browse_mode=info["mode"],
                 conditional=True,
-                config_values=saved_values
+                config_values=saved_values,
+                add_btn_wg_kwargs = {"text": info.get("add_button_text", "Add Another")}
             )
 
             # Increment main window row index (main entry + dynamic list frame)
@@ -196,26 +204,33 @@ for section, field_vars in cfg_arch.items():
 
             # Instantiate entry row object and store config entry value if it exists
             row_obj = cfgm.EntryRow(
-                window=gui.scrollwin, 
-                window_row_ind=main_row,
+                container=gui.scroll_frame,
                 field_var=var,
-                row_label_text=info["label"],
-                help_text=info["help_text"],
-                config_value=value
+                row_ind=main_row,
+                norm_label_kwargs={
+                    "widget": {"text": info["label"]}
+                },
+                tooltip_label_kwargs={
+                    "hover_label": {"text": info["help_text"]}
+                }
             )
 
             # Construct filepath entry row
-            app.entries_dict[var] = row_obj.fp_row(info["is_file"])
+            app.entries_dict[var] = row_obj.build_fp_row(info["mode"])
                 
             # Increment main window row index
             main_row += 1
         # ---------------------------------------
+        
+# --- Load config AFTER all widgets are created ---
+if config_path.exists():
+    app.load_config()
 
 #%%     MISC. GUI WIDGETS
 
 # Construct the config save button within the GUI
-save_btn = cfgm.SaveButton(window=gui.scrollwin, config_app_obj=app)
-save_btn.place_save_btn(window_row=main_row, window_col=2)
+save_btn = cfgm.SaveButton(container=gui.scroll_frame, config_app_obj=app, btn_grid_kwargs={"column": 2})
+save_btn.build_save_btn()
 
 # Construct an explanatory label for executables at bottom of GUI
 ltxt = (
@@ -227,10 +242,10 @@ ltxt = (
     "version of the software you want to run if you have multiple versions "
     "installed on your PC."
 )
-label = ttk.Label(gui.scrollwin, text=ltxt, justify="left", font=("Arial", 8), wraplength=gui.width-50)
+label = ttk.Label(gui.scroll_frame, text=ltxt, justify="left", font=("Arial", 8), wraplength=gui.width-50)
 label.grid(row=main_row+1, column=0, columnspan=5)
 
 #%%     GUI RUNTIME
 
 # Display the GUI
-gui.mainwin.mainloop()
+gui.window.mainloop()
