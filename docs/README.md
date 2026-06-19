@@ -1,4 +1,4 @@
-# CRA:KIN   | CFD Resource Administrator for Academics: Keepin' It Nimble.
+# CRA:KIN | CFD Resource Administrator for Academics: Keepin' It Nimble.
 
 Hey! What's crackin'?  
 
