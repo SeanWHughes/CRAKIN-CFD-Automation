@@ -64,7 +64,7 @@ if not Path(CREO_BATCH_FP).exists():
     if Path(CREO_OG_BATCH_FP).exists():
         shutil.copy2(CREO_OG_BATCH_FP, CREO_BATCH_FP)
     else:
-        RuntimeError("ERROR: Could not find the Creo batch file within the same"\
+        RuntimeError("Could not find the Creo batch file within the same"\
                      "directory as the parametric.exe file")
 
 # (5) Excel sheets

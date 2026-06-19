@@ -88,11 +88,11 @@ def param_status(client,
         par_names = set(par_names)
     elif isinstance(par_names, (list, set)):
         if not all(isinstance(element, str) for element in par_names):
-            raise ValueError(f"ERROR: Parameter name(s) input list or set contains non-strings: \n{par_names}")        
+            raise ValueError(f"Parameter name(s) input list or set contains non-strings: \n{par_names}")        
         elif isinstance(par_names, list):
             par_names = set(par_names)
     else:
-        raise ValueError(f"ERROR: Parameter name(s) input must be a string, list of strings, or set of strings: \n{par_names}")
+        raise ValueError(f"Parameter name(s) input must be a string, list of strings, or set of strings: \n{par_names}")
     
     # Initialize output dictionary with all input parameters unlocked at default
     status_dict = {par: {"type": None,

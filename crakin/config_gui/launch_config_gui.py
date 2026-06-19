@@ -14,17 +14,22 @@ would to use elsewhere in the codebase.
 
 #%%     IMPORT MODULES
 
+# Standard modules
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
-import config_managers as cfgm
-import json
+
+# Custom modules
+import inputrow_builders as irBLD
+import poly_inputrow_builders as pirBLD
+import inputrow_blueprints as irBP
+import poly_inputrow_blueprints as pirBP
+import config_io as cfgio
+import gui_core
 
 #%%     ARCHITECTURE USER-INPUTS
 
-# Use this section to customize the row entries for the config.ini and GUI
-
-# Define config architecture (i.e. the config.ini sections and field variable names)
+# Define config architecture (i.e. the config.json groups and field names)
 cfg_arch = {
     "PROJECT": ["WORK_DIR", "DOE_PROJ_DIR", "OF_CASE_DIR_TEMPLATE"],
     "CREO": ["CREO_MODEL_FP", "CREO_EXE_FP", "CREOSON_DIR"],
@@ -122,7 +127,7 @@ try:
     # If running outside IDE, try to get working directory from script location
     SCRIPT_FP = Path(__file__).resolve()
     WORK_DIR = SCRIPT_FP.parent
-except:
+except NameError:
     # If running inside IDE, try to assign current working directory from default
     WORK_DIR = Path.cwd().resolve()
     SCRIPT_FP = WORK_DIR / "setup_config.py"
@@ -133,16 +138,19 @@ if not Path(SCRIPT_FP).exists():
 config_path = Path("config.json").resolve()
 
 # Instantiate config setup app object
-app = cfgm.ConfigSetupApp(config_path=config_path, arch=cfg_arch)
+app = cfgio.ConfigSetupApp(config_path=config_path, arch=cfg_arch)
 
 # Load config.json file it if it exists, otherwise run initializiation routine
 if not config_path.exists():
     app.init_config(work_dir=WORK_DIR)
+# Load config after all widgets have been created ---
+else:
+    app.load_config()
     
 #%%     GUI WINDOW CONSTRUCTION
 
 # Construct main window object that will display the GUI
-gui = cfgm.GUIBootstrap(GUIwidth=1000, GUIheight=600, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
+gui = gui_core.GUIBootstrap(GUIwidth=1200, GUIheight=600, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
 
 # Initialize row index for the main GUI window
 main_row = 0
@@ -150,86 +158,92 @@ main_row = 0
 # Create a short instructional label at top of GUI
 ltxt = ("Populate the fields below with the absolute filepaths for your "
         "CFD setup (manually or using the browser dialogs).")
-label = ttk.Label(gui.scroll_frame, text=ltxt, font=("Segoe UI", 10))
-label.grid(row=main_row, column=0, columnspan=5, pady=20, sticky="")
+label = ttk.Label(gui.scroll_frame, text=ltxt, font=("Segoe UI", 10), width=95)
+label.grid(row=main_row, column=2, pady=20, sticky="")
 
 # Increment main window row index
 main_row += 1
 
+#%%     GUI ENTRY ROW SPECIFICATIONS
+
+# Generate basic filepath input row specification object
+basic_fp_spec = irBP.FilepathInputRowSpec(show_label=True)
+
+# Generate dynamic filepath input row specification object
+dyn_fp_spec = irBP.FilepathInputRowSpec(
+    show_label=False,
+    browse_mode="file",
+    fp_entry_kwargs={"widget": {"width": 70}},
+    browse_btn_kwargs={"widget": {"style": "SmallBrowse.TButton"}}
+)
+
+# Generate dynamic condition input row specification object
+dyn_cond_spec = irBP.ConditionInputRowSpec(show_label=False)
+
 #%%     GUI ENTRY ROW CONSTRUCTION
 
-# Loop through every section and field variable defined within config architecture
-for section, field_vars in cfg_arch.items():
-    for var in field_vars:
+# Loop through every group and field defined within config architecture
+for group, fields in cfg_arch.items():
+    for field in fields:
         
         # Extract field variable info dictionary
-        info = field_info[var]
-
-        # ---------- DYNAMIC ENTRY ROW ---------
-        if bool(info.get("dynamic")):
-
-            # Load previously saved dynamic values from config.ini
-            saved_values = app.config_get(section, var)
-
-            dyn_entry_one = cfgm.EntryRow(
-                container=gui.scroll_frame,
-                field_var=var,
-                row_ind=main_row,
-                norm_label_kwargs={
-                    "widget": {"text": info["label"]}
-                },
-                tooltip_label_kwargs={
-                    "hover_label": {"text": info["help_text"]}
-                }
-            )
-                                   
-
-            # Create the DynamicRowList object
-            app.dynamic_entries[var] = cfgm.DynamicRowList(
-                dyn_entry_one,
-                show_label=False,
-                browse_mode=info["mode"],
-                conditional=True,
-                config_values=saved_values,
-                add_btn_wg_kwargs = {"text": info.get("add_button_text", "Add Another")}
-            )
-
-            # Increment main window row index (main entry + dynamic list frame)
-            main_row += 2
-        # ---------------------------------------
-        # ----------- NORMAL ENTRY ROW ----------
-        else:
-            # Extract row value from the config.json
-            value = app.config_get(section, var)
-
-            # Instantiate entry row object and store config entry value if it exists
-            row_obj = cfgm.EntryRow(
-                container=gui.scroll_frame,
-                field_var=var,
-                row_ind=main_row,
-                norm_label_kwargs={
-                    "widget": {"text": info["label"]}
-                },
-                tooltip_label_kwargs={
-                    "hover_label": {"text": info["help_text"]}
-                }
-            )
-
-            # Construct filepath entry row
-            app.entries_dict[var] = row_obj.build_fp_row(info["mode"])
-                
-            # Increment main window row index
-            main_row += 1
-        # ---------------------------------------
+        info = field_info[field]
         
-# --- Load config AFTER all widgets are created ---
-if config_path.exists():
-    app.load_config()
+        # Update filepath spec with row-specific instructions
+        basic_fp_spec.browse_mode = info["mode"]
+        basic_fp_spec.simple_label_kwargs = {"widget": {"text": info["label"]}}
+        basic_fp_spec.tooltip_label_kwargs = {"hover_label": {"text": info["help_text"]}}
+        
+        # Generate context object
+        row_ctx = irBP.InputRowContext(
+            container=gui.scroll_frame,
+            row_ind=main_row,
+            base_col_ind=0,
+            cfg_group=group,
+            cfg_field=field,
+            cfg_rowid=str(main_row)
+        )
+        
+        # ---------- NORMAL ENTRY ROW ----------
+        if not bool(info.get("dynamic")):
+            # Build input row and register inside config app
+            irBLD.InputRowBuilder.build_fp_inputrow(
+                ctx=row_ctx, 
+                spec=basic_fp_spec,
+                cfg_app_obj=app
+            )
+
+            # Increment row counter
+            main_row += 1
+
+        # ---------- DYNAMIC ENTRY ROW ----------
+        else:
+            # Build the parent input row for the dynamic input
+            parent_row = irBLD.InputRowBuilder.build_fp_inputrow(
+                ctx=row_ctx, 
+                spec=basic_fp_spec,
+                cfg_app_obj=app
+            )
+            
+            # Update dynamic filepath spec with row-specific instructions
+            dyn_fp_spec.browse_mode = info["mode"]
+            
+            # Generate polyspec for dynamic input row
+            dyn_polyspec = pirBP.DynamicPolyInputRowSpec(
+                parent_row_obj=parent_row, 
+                specs=[dyn_fp_spec, dyn_cond_spec],
+                cfg_app_obj=app)
+
+            # Instantiate dynamic input row builder for the parent input row
+            pirBLD.DynamicInputRowBuilder(dyn_polyspec)
+
+            # Increment row counter twice to account for the input row the add button(s) row
+            main_row += 2
 
 #%%     MISC. GUI WIDGETS
 
 # Construct the config save button within the GUI
-save_btn = cfgm.SaveButton(container=gui.scroll_frame, config_app_obj=app, btn_grid_kwargs={"column": 2})
+save_btn = gui_core.SaveButton(container=gui.scroll_frame, config_app_obj=app, btn_grid_kwargs={"column": 2})
 save_btn.build_save_btn()
 
 # Construct an explanatory label for executables at bottom of GUI
@@ -242,8 +256,8 @@ ltxt = (
     "version of the software you want to run if you have multiple versions "
     "installed on your PC."
 )
-label = ttk.Label(gui.scroll_frame, text=ltxt, justify="left", font=("Arial", 8), wraplength=gui.width-50)
-label.grid(row=main_row+1, column=0, columnspan=5)
+label = ttk.Label(gui.scroll_frame, text=ltxt, justify="left", font=("Arial", 8), wraplength=gui.width-100)
+label.grid(row=main_row+1, column=0, columnspan=5, pady=10, padx=10)
 
 #%%     GUI RUNTIME
 
