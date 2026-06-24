@@ -2,7 +2,7 @@
 # https://github.com/github/gitignore/blob/main/Python.gitignore
 
 # Auto-generated Creo batch file
-crakin/nitro_proe_remote.bat
+src/crakin/helpers/nitro_proe_remote.bat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
