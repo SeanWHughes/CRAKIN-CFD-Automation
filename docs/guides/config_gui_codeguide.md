@@ -48,14 +48,19 @@ unit of the GUI is an "input row", which is just a standardized multi-column row
 that allows for some type of user input. These input rows are built using two
 dataclass objects ("blueprints"): 
 
-1. Input Row Specification: (i.e the `InputRowSpec` or "spec" for short) This is
-	used to detail the style and settings of a particular input row using keyword
-	arguments such that it can be applied to many input rows, regardless of where
-	they are built within the GUI.
-2. Input Row Context: (i.e. the `InputRowContext` or "ctx" for short) This is
-	used to detail the position of the input row within the GUI as well as the
-	position and relationship of the input row within the config.json file. A
-	unique context must be supplied for every input row
+1. **Input Row Specification:** (i.e the `InputRowSpec` or "spec" for short). 
+   This is used to detail the style and settings of a particular input row using
+   keyword arguments such that it can be applied to many input rows, regardless
+   of where they are built within the GUI.
+
+2. **Input Row Context:** (i.e. the `InputRowContext` or "ctx" for short). 
+   This is used to detail the position of the input row within the GUI as well
+	as the position and relationship of the input row within the config.json
+	file. It also details any of the widget keyword arguments that must be
+	specific to each individual instance of that input row type. This allows for
+	the "individual row" values to be separate from the more general "row style"
+	of the spec classes. As such, a unique context must be supplied for every
+	input row.
 
 **INPUT ROW BUILDERS:**
 Input rows are built using three files within the config\_gui directory. 
@@ -105,12 +110,13 @@ Additionally, the config can be modified to allow for different types of inputs
 entirely so long as the code for a new input row is added to the codebase. For
 example, for a new input row type of "Name", these codebase changes include:
 
-1. An `{Name}InputRowSpec` dataclass within inputrow\_blueprints.py
-2. A `build_{name}_UI_widgets` method within the `InputRowElementBuilder` class
+1. A '{Name}InputRowContext' dataclass within inputrow\_blueprints.py
+2. A `{Name}InputRowSpec` dataclass within inputrow\_blueprints.py
+3. A `build_{name}_UI_widgets` method within the `InputRowElementBuilder` class
    inside inputrow\_element\_builders.py.
-3. A `build_{name}_inputrow` static method within the `InputRowBuilder` class
+4. A `build_{name}_inputrow` static method within the `InputRowBuilder` class
    inside inputrow\_builders.py
-4. Adding the `build_{name}_inputrow` method to the `IR_BUILDERS` list within the
+5. Adding the `build_{name}_inputrow` method to the `IR_BUILDERS` list within the
    `BasePolyInputRowSpec` dataclass inside poly\_inputrow\_blueprints.py (this
    ensures that all poly input row builders can recognize your new input row
    type and build it).

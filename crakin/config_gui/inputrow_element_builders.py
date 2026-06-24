@@ -22,16 +22,34 @@ class InputRowElementBuilder:
     This class is used to build every widget within each input row.
     """
     
-    def __init__(self, ctx: irBP.InputRowContext, spec: irBP.BaseInputRowSpec):
+    def __init__(self, ctx: irBP.BaseInputRowContext, 
+                 spec: irBP.BaseInputRowSpec):
         """
         Constructor method for row element builder objects managing the
         layout and row specifications for all elements within the row.
         """
         
+        self.ctx = ctx
         self.container = ctx.container
         self.row_ind = ctx.row_ind
         self.base_col_ind = ctx.base_col_ind
         self.spec = spec
+        
+        # RESOLVE: Prefer context options over spec options if overlap
+        self.simple_text = self._resolve_option(
+            self.ctx.simple_text,
+            self.spec.simple_label_wg_kwargs.get("text")
+        )
+        self.hover_text = self._resolve_option(
+            self.ctx.hover_text,
+            self.spec.hover_label_wg_kwargs.get("text")
+        )
+
+    def _resolve_option(self, ctx_value, spec_value):
+        """
+        Context overrides spec.
+        """
+        return ctx_value if ctx_value is not None else spec_value            
 
     def _note_modifications(self, widget):
         """
@@ -45,7 +63,8 @@ class InputRowElementBuilder:
         except Exception:
             pass
         
-    def _adjust_cellsizes(self, input_frame_wg, row_range: Tuple[int, int] | int, 
+    def _adjust_cellsizes(self, input_frame_wg, 
+                          row_range: Tuple[int, int] | int, 
                           col_range: Tuple[int, int] | int):
         """
         Private method that adjusts the size of internal rows and columns of
@@ -79,16 +98,21 @@ class InputRowElementBuilder:
         """
 
         # I. CONTEXT: Set row and column
-        self.spec.simple_label_grid_kwargs["row"] = self.row_ind                     # Force into same row
-        self.spec.simple_label_grid_kwargs.setdefault("column", self.base_col_ind)   # Default to leftmost column
+        row_ind = self.row_ind
+        col_ind = self.base_col_ind     # Default is leftmost column
 
         # II: BUILD: Build all necessary widgets
         # Build simple input row label
         simple_label_wg = ttk.Label(
             self.container,
+            text=self.simple_text,
             **self.spec.simple_label_wg_kwargs
         )
-        simple_label_wg.grid(**self.spec.simple_label_grid_kwargs)
+        simple_label_wg.grid(
+            row=row_ind,
+            column=col_ind,
+            **self.spec.simple_label_grid_kwargs
+        )
 
         return simple_label_wg
     
@@ -100,8 +124,8 @@ class InputRowElementBuilder:
         """
         
         # I. CONTEXT: Set row and column
-        self.spec.pin_label_grid_kwargs["row"] = self.row_ind                         # Force into same row
-        self.spec.pin_label_grid_kwargs.setdefault("column", self.base_col_ind + 1)   # Default to 2nd leftmost column
+        row_ind = self.row_ind              
+        col_ind = self.base_col_ind + 1     # Default to 2nd leftmost column
 
         # II: BUILD: Build all necessary widgets
         # Build pin label widget that will activate the tooltip textbox
@@ -109,7 +133,11 @@ class InputRowElementBuilder:
             self.container,
             **self.spec.pin_label_wg_kwargs
         )
-        pin_label_wg.grid(**self.spec.pin_label_grid_kwargs)
+        pin_label_wg.grid(
+            row=row_ind,
+            column=col_ind,
+            **self.spec.pin_label_grid_kwargs
+        )
         
         # Initialize tooltip container object reference
         tip_toplvl_wg = None
@@ -140,6 +168,7 @@ class InputRowElementBuilder:
             # Insert the tooltip text as a label within the tooltip container
             hovertxt_label_wg = ttk.Label(
                 tip_toplvl_wg,
+                text=self.hover_text
                 **self.spec.hover_label_wg_kwargs
             )
             hovertxt_label_wg.pack()
@@ -172,9 +201,18 @@ class InputRowElementBuilder:
         # I. SPEC GATE: Require a FilepathInputRowSpec for the builder spec
         self.spec.require_spectype(irBP.FilepathInputRowSpec)
         
+        # RESOLVE: Prefer context options over spec options if overlap
+        self.browse_mode = self._resolve_option(
+            self.ctx.browse_mode,
+            self.spec.browse_mode
+        )
+        # Throw an error if invalid browse mode chosen
+        if self.browse_mode not in ("file", "folder"):
+            raise ValueError(f"browse_mode must be 'file' or 'folder, invalid value: {self.browse_mode}")
+        
         # II. CONTEXT: Set row and column
-        self.spec.input_frame_grid_kwargs["row"] = self.row_ind
-        self.spec.input_frame_grid_kwargs.setdefault("column", self.base_col_ind + 2)
+        row_id = self.row_ind
+        col_id = self.base_col_ind + 2
         
         # III. UI VARS: Create variables for user-input values
         # Initialize a string variable for UI text
@@ -189,10 +227,18 @@ class InputRowElementBuilder:
             self.container,
             **self.spec.input_frame_wg_kwargs
         )
-        input_frame_wg.grid(**self.spec.input_frame_grid_kwargs)
+        input_frame_wg.grid(
+            row=row_id,
+            column=col_id,
+            **self.spec.input_frame_grid_kwargs
+        )
         
         # Resize cells according to widget
-        self._adjust_cellsizes(input_frame_wg, row_range=0, col_range=(0, 1))
+        self._adjust_cellsizes(
+            input_frame_wg, 
+            row_range=0, 
+            col_range=(self.base_col_ind, col_id)
+        )
         
         # Build filepath entry widget
         fp_entry_wg = ttk.Entry(
@@ -213,9 +259,9 @@ class InputRowElementBuilder:
             """
 
             # Open OS dialog and store filepath as a string (either a file or folder)
-            if self.spec.browse_mode == "file":
+            if self.browse_mode == "file":
                 pathstr = filedialog.askopenfilename()
-            elif self.spec.browse_mode == "folder":
+            elif self.browse_mode == "folder":
                 pathstr = filedialog.askdirectory()
         
             # Populate the textbox within the GUI only if the user entered a filepath
@@ -261,8 +307,8 @@ class InputRowElementBuilder:
         self.spec.require_spectype(irBP.ConditionInputRowSpec)
         
         # II. CONTEXT: Set row and column
-        self.spec.input_frame_grid_kwargs["row"] = self.row_ind
-        self.spec.input_frame_grid_kwargs.setdefault("column", self.base_col_ind + 2)
+        row_ind = self.row_ind
+        col_ind = self.base_col_ind + 2
         
         # III. UI VARS: Create variables for user-input values
         # Initialize a string variables for UI text and selections
@@ -285,7 +331,11 @@ class InputRowElementBuilder:
             self.container,
             **self.spec.input_frame_wg_kwargs
         )
-        input_frame_wg.grid(**self.spec.input_frame_grid_kwargs)
+        input_frame_wg.grid(
+            row=row_ind,
+            column=col_ind,
+            **self.spec.input_frame_grid_kwargs
+        )
         
         # Define options for boolean (relational) operators
         OPS = ["", "<", "<=", ">", ">=", "==", "!="]
@@ -415,9 +465,9 @@ class InputRowElementBuilder:
             rather than altering the UI variable itself.
             """
             if widget.cget("state") == "disabled":
-                return ""
+                return None
             else:
-                return UIvar.get()
+                return UIvar
         
         # VI OUTPUT: Package all outputs into dicts
         # Package UI variables

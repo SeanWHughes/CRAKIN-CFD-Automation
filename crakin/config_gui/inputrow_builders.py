@@ -26,7 +26,7 @@ class InputRow:
     """
     
     # Store structural input data
-    ctx: irBP.InputRowContext
+    ctx: irBP.BaseInputRowContext
     spec: irBP.BaseInputRowSpec
 
     # Store runtime state variable data
@@ -47,8 +47,9 @@ class InputRowBuilder:
     """
     
     @staticmethod
-    def _register_inputrow(ctx: irBP.InputRowContext, spec: irBP.ConditionInputRowSpec, 
-                        widgets, UIvars, cfg_app_obj):
+    def _register_inputrow(ctx: irBP.BaseInputRowContext, 
+                           spec: irBP.ConditionInputRowSpec, 
+                           widgets, UIvars, cfg_app_obj):
         """
         Private method for creating and then registering an InputRow object.
         """
@@ -70,7 +71,8 @@ class InputRowBuilder:
         return inputrow_obj
     
     @staticmethod
-    def build_fp_inputrow(ctx: irBP.InputRowContext, spec: irBP.FilepathInputRowSpec, 
+    def build_fp_inputrow(ctx: irBP.FilepathInputRowContext, 
+                          spec: irBP.FilepathInputRowSpec, 
                           cfg_app_obj):
         """
         Method for building filepath input rows into the GUI.
@@ -78,10 +80,6 @@ class InputRowBuilder:
 
         # Require a FilepathInputRowSpec for the builder spec
         spec.require_spectype(irBP.FilepathInputRowSpec)
-        
-        # Throw an error if invalid browse mode chosen
-        if spec.browse_mode not in ("file", "folder"):
-            raise ValueError(f"browse_mode must be 'file' or 'folder, invalid value: {spec.browse_mode}")
         
         # Extract filepath config values from config.json
         cfg_pull_values = cfg_app_obj.config_get(ctx.cfg_key) or {}
@@ -107,7 +105,7 @@ class InputRowBuilder:
         )
         
     @staticmethod
-    def build_cond_inputrow(ctx: irBP.InputRowContext, 
+    def build_cond_inputrow(ctx: irBP.ConditionInputRowContext, 
                             spec: irBP.ConditionInputRowSpec, 
                             cfg_app_obj: ConfigSetupApp):
         """

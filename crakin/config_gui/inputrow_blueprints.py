@@ -14,11 +14,11 @@ from typing import Literal
 #%%     ROW CONTEXT DATACLASSES
 
 @dataclass
-class InputRowContext:
+class BaseInputRowContext:
     """
-    A dataclass containing every structural (i.e. non-state) variable that is 
-    specific to a single row input (i.e. that row's particular "context" within 
-    the config and GUI) such that the same row specifications (via an 
+    Baseline dataclass containing every structural (i.e. non-state) variable 
+    that is specific to a single row input (i.e. that row's particular 
+    "context" within the config and GUI) such that the same row specifications (via an 
     InputRowSpec object) can be reused for multiple stylistically/functionally 
     identical rows so long as a unique InputRowContext object is supplied to a 
     builder function. InputRowContext objects are often referred to just as
@@ -27,14 +27,18 @@ class InputRowContext:
     
     # Spatial context
     container: any
-    row_ind: int
-    base_col_ind: int
+    row_ind: int        # via grid kwargs
+    base_col_ind: int   # via grid kwargs
     
     # Config.json architectural context
     cfg_group: str
     cfg_field: str
     cfg_rowid: str
     cfg_parent_rowid: str | None = None
+    
+    # Widget context (optional)
+    simple_text: str | None = None
+    hover_text: str | None = None
     
     # Initialize a key to package row coordinates within config.json
     cfg_key: tuple = field(init=False)
@@ -45,13 +49,44 @@ class InputRowContext:
         """
         
         self.cfg_key = (self.cfg_group, self.cfg_field, self.cfg_rowid)
+        
+@dataclass
+class FilepathInputRowContext(BaseInputRowContext):
+    """
+    Context dataclass for filepath input row.
+    """
+    
+    # Widget context (optional)
+    browse_mode: Literal["file", "folder"] | None = None
+        
+    def __post_init__(self):
+        """ 
+        Post-construction method for filepath input rows.
+        """
+        
+        # Inherit/call the BaseInputRowSpec post-construction method
+        super().__post_init__()
+        
+@dataclass
+class ConditionInputRowContext(BaseInputRowContext):
+    """
+    Context dataclass for condition input row.
+    """
+    
+    def __post_init__(self):
+        """ 
+        Post-construction method for filepath input rows.
+        """
+        
+        # Inherit/call the BaseInputRowSpec post-construction method
+        super().__post_init__()
 
 #%%     INPUT ROW SPECIFICATION DATACLASSES
 
 @dataclass
 class BaseInputRowSpec:
     """ 
-    Baseline specification dataclass for every type of user input row. Every 
+    Baseline specification dataclass for every type of input row. Every 
     InputRowSpec object ("spec" for short) represents the reusable instructions 
     for how to build a particular type of input row. These instructions are 
     then passed to a builder function as a single object such that many 
@@ -71,7 +106,7 @@ class BaseInputRowSpec:
     
     def __post_init__(self):
         """ 
-        Post-construction method for every type of user input rows.
+        Post-construction method for every type of input rows.
         """
         
         # Prevent BaseInputRowSpec from being instantiated directly
@@ -161,21 +196,22 @@ class BaseInputRowSpec:
 @dataclass
 class FilepathInputRowSpec(BaseInputRowSpec):
     """ 
-    Specification dataclass for filepath user input row. 
+    Specification dataclass for filepath input row. 
     """
     
     # Config.json specification
     cfg_spectype: str = "filepath"
     
-    browse_mode: Literal["file", "folder"] = None
-    
     # Force any mutable defaults to be created for every instance of the class 
     fp_entry_kwargs: dict = field(default_factory=dict)
     browse_btn_kwargs: dict = field(default_factory=dict)
     
+    # Optional browse model option
+    browse_mode: Literal["file", "folder"] = None
+    
     def __post_init__(self):
         """ 
-        Post-construction method for filepath user input rows.
+        Post-construction method for filepath input rows.
         """
         
         # Inherit/call the BaseInputRowSpec post-construction method
@@ -221,7 +257,7 @@ class FilepathInputRowSpec(BaseInputRowSpec):
 @dataclass
 class ConditionInputRowSpec(BaseInputRowSpec):   
     """ 
-    Specification dataclass for condition user input row. 
+    Specification dataclass for condition input row. 
     """
 
     # Config.json specification
@@ -234,7 +270,7 @@ class ConditionInputRowSpec(BaseInputRowSpec):
 
     def __post_init__(self):
         """ 
-        Post-construction method for condition user input rows. 
+        Post-construction method for condition input rows. 
         """  
         
         # Inherit/call the BaseInputRowSpec post-construction method

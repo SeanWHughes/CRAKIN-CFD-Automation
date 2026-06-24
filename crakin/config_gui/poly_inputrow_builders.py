@@ -102,15 +102,18 @@ class DynamicInputRowBuilder:
         cfg_parent_rowid = polyspec.p_cfg_rowid
         cfg_rowid = f"{cfg_parent_rowid}.{self.inputrow_count}"
 
+        # Get the right input row context for the input row type
+        ctx_class = type(polyspec.parent_row_obj.ctx)
+        
         # Initialize context for the row to be appended
-        dyn_ctx = irBP.InputRowContext(
+        dyn_ctx = ctx_class(
             container=self.dyn_frame_wg,
             row_ind=self.frame_row,
             base_col_ind=polyspec.p_base_col_ind,
             cfg_group=polyspec.p_cfg_group,
             cfg_field=polyspec.p_cfg_field,
             cfg_rowid=cfg_rowid,
-            cfg_parent_rowid=cfg_parent_rowid
+            cfg_parent_rowid=cfg_parent_rowid,
         )
         
         # Determine the builder function for the input spec

@@ -18,6 +18,7 @@ would to use elsewhere in the codebase.
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
+import copy
 
 # Custom modules
 import inputrow_builders as irBLD
@@ -150,7 +151,7 @@ else:
 #%%     GUI WINDOW CONSTRUCTION
 
 # Construct main window object that will display the GUI
-gui = gui_core.GUIBootstrap(GUIwidth=1200, GUIheight=600, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
+gui = gui_core.GUIBootstrap(GUIwidth=1500, GUIheight=1000, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
 
 # Initialize row index for the main GUI window
 main_row = 0
@@ -189,23 +190,21 @@ for group, fields in cfg_arch.items():
         # Extract field variable info dictionary
         info = field_info[field]
         
-        # Update filepath spec with row-specific instructions
-        basic_fp_spec.browse_mode = info["mode"]
-        basic_fp_spec.simple_label_kwargs = {"widget": {"text": info["label"]}}
-        basic_fp_spec.tooltip_label_kwargs = {"hover_label": {"text": info["help_text"]}}
-        
         # Generate context object
-        row_ctx = irBP.InputRowContext(
+        row_ctx = irBP.FilepathInputRowContext(
             container=gui.scroll_frame,
             row_ind=main_row,
             base_col_ind=0,
             cfg_group=group,
             cfg_field=field,
-            cfg_rowid=str(main_row)
+            cfg_rowid=str(main_row),
+            simple_text=info["label"],
+            hover_text=info["help_text"],
+            browse_mode=info["mode"]
         )
         
         # ---------- NORMAL ENTRY ROW ----------
-        if not bool(info.get("dynamic")):
+        if not bool(info.get("dynamic")):          
             # Build input row and register inside config app
             irBLD.InputRowBuilder.build_fp_inputrow(
                 ctx=row_ctx, 
@@ -224,9 +223,6 @@ for group, fields in cfg_arch.items():
                 spec=basic_fp_spec,
                 cfg_app_obj=app
             )
-            
-            # Update dynamic filepath spec with row-specific instructions
-            dyn_fp_spec.browse_mode = info["mode"]
             
             # Generate polyspec for dynamic input row
             dyn_polyspec = pirBP.DynamicPolyInputRowSpec(
