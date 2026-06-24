@@ -1,8 +1,8 @@
-**CONFIG GUI**
+### CONFIG GUI:
 The config\_gui directory contains a large set of classes, methods, and functions
 used to customize the config.json setup and integration within the config GUI.
 
-**STRUCTURE:**
+### STRUCTURE:
 Briefly, the structure of the entire config\_gui codebase is as follows:
 
     InputRowSpec -> InputRowElementBuilder -> InputRowBuilder ->  
@@ -12,17 +12,19 @@ The gui\_core.py is used to setup the GUI window and any of the more complex
 non-input row elements of the GUI. The config\_io.py is used to communicate info
 between the frontend and backend (config.json).
 
-**NAMING CONVENTIONS:**
+### NAMING CONVENTIONS:
+
 In this code, all tkinter widgets (i.e. tk and ttk) are instantiated with an
 object name as follows: `{purpose}_{widget type}_wg`. The `_wg` stands for
-"widget" or sometimes `_wgs` is used for a list of widgets. Similarly, widget
-options are specified through `{purpose}_{widget type}_wg_kwargs`, while grid
-options are specified through `{purpose}_{widget type}_grid_kwargs`.
+"widget" or sometimes `_wgs` is used for a list or dict of widgets. Similarly,
+widget options are specified through `{purpose}_{widget type}_wg_kwargs`, while
+grid options are specified through `{purpose}_{widget type}_grid_kwargs`.
 Additionally, custom class objects are often instantiated with an object name
 that ends in `_obj`. This reduces how succinct the program is, but greatly
 improves clarity for future customization. 
 
-**NOTE ON CONTAINERS:**
+### CONTAINERS:
+
 All tkinter widgets require a container for the widget to be placed within
 ("container" is used here but these are also often referred to as "parent",
 "owner", or "context"). Potential containers include: 
@@ -42,7 +44,8 @@ windows can technically be created; however, this code is for a single-window
 GUI application, and so the only real window used in this code should be the
 main window.
 
-**INPUT ROW BLUEPRINTS:**
+### INPUT ROW BLUEPRINTS:
+
 The code for the config GUI reflects the structure of the GUI itself. The basic
 unit of the GUI is an "input row", which is just a standardized multi-column row
 that allows for some type of user input. These input rows are built using two
@@ -62,7 +65,8 @@ dataclass objects ("blueprints"):
 	of the spec classes. As such, a unique context must be supplied for every
 	input row.
 
-**INPUT ROW BUILDERS:**
+### INPUT ROW BUILDERS:
+
 Input rows are built using three files within the config\_gui directory. 
 
 The lowest level builders are within inputrow\_element\_builders.py, which
@@ -88,7 +92,8 @@ reflect this backend connection with a frontend visual connection on the GUI.
 The dataclasses detailing the specifications for a poly-row builder can be found
 in poly\_inputrow\_blueprints.py.
 
-**CONFIG INPUT-OUTPUT:**
+### CONFIG INPUT-OUTPUT:
+
 The config\_io.py file contains a class for a config app that initializes the
 config.json file, manages all of the gui outputs, and then converts these into
 inputs for the config.json file. The InputRow object cache and the config
