@@ -1,6 +1,9 @@
 # Based on GitHub's Python.gitignore:
 # https://github.com/github/gitignore/blob/main/Python.gitignore
 
+# Auto-generated Creo batch file
+crakin/nitro_proe_remote.bat
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
