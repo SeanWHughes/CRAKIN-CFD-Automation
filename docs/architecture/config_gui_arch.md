@@ -1,10 +1,10 @@
 ### CONFIG GUI:
-The *crakin\\config\_gui\\* directory contains a large set of classes, methods,
+The *config\_gui\\* directory contains a large set of classes, methods,
 and functions used to customize the config.json setup and integration within the
 config GUI.
 
 ### STRUCTURE:
-Briefly, the structure of the entire *crakin\\config\_gui\\* codebase is as
+Briefly, the structure of the entire *config\_gui\\* codebase is as
 follows:
 
     InputRowSpec -> InputRowElementBuilder -> InputRowBuilder ->  
@@ -69,7 +69,7 @@ dataclass objects ("blueprints"):
 
 ### INPUT ROW BUILDERS:
 
-Input rows are built using three files within the *crakin\\config\_gui\\*
+Input rows are built using three files within the *config\_gui\\*
 directory. 
 
 The lowest level builders are within *inputrow\_element\_builders.py*, which
