@@ -1,0 +1,44 @@
+name: Performance Improvement
+description: Report slow execution or suggest optimizations.
+title: "[PERFORMANCE] "
+labels:
+  - performance
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is slow?
+    validations:
+      required: true
+
+  - type: input
+    id: runtime
+    attributes:
+      label: Current Runtime
+
+  - type: input
+    id: expected_runtime
+    attributes:
+      label: Desired Runtime
+
+  - type: input
+    id: assembly_size
+    attributes:
+      label: Assembly Size (parts)
+
+  - type: input
+    id: mesh_size
+    attributes:
+      label: Mesh Size (cells)
+
+  - type: textarea
+    id: profiling
+    attributes:
+      label: Profiling Information
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Optimization

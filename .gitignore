@@ -1,6 +1,9 @@
 # Based on GitHub's Python.gitignore:
 # https://github.com/github/gitignore/blob/main/Python.gitignore
 
+# Generated config.json file
+src/crakin/config_gui/config.json
+
 # Auto-generated Creo batch file
 src/crakin/helpers/nitro_proe_remote.bat
 

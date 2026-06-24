@@ -1,0 +1,85 @@
+name: Bug Report
+description: Report a defect or unexpected behavior.
+title: "[BUG] "
+labels:
+  - bug
+
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Open model
+        2. Run workflow
+        3. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Messages / Logs
+      render: shell
+
+  - type: input
+    id: project_version
+    attributes:
+      label: Project Version
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python Version
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+
+  - type: input
+    id: creopyson
+    attributes:
+      label: Creopyson Version
+
+  - type: input
+    id: creo
+    attributes:
+      label: Creo Version
+
+  - type: input
+    id: ansys
+    attributes:
+      label: ANSYS Version
+
+  - type: input
+    id: openfoam
+    attributes:
+      label: OpenFOAM Version
+
+  - type: input
+    id: excel
+    attributes:
+      label: Excel Version

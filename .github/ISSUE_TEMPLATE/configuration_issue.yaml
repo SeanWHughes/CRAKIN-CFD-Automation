@@ -1,0 +1,38 @@
+name: Installation / Configuration Issue
+description: Problems setting up the environment.
+title: "[SETUP] "
+labels:
+  - setup
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Verification Checklist
+      options:
+        - label: Python installed
+        - label: Dependencies installed
+        - label: Creo installed
+        - label: Creoson server running
+        - label: ANSYS installed
+        - label: OpenFOAM installed
+        - label: Excel installed
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      render: shell

@@ -1,0 +1,39 @@
+name: Feature Request
+description: Suggest a new capability.
+title: "[FEATURE] "
+labels:
+  - enhancement
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Affected Area
+      options:
+        - Excel
+        - Creo
+        - ANSYS
+        - OpenFOAM
+        - Data Model
+        - CLI
+        - API
+        - Other

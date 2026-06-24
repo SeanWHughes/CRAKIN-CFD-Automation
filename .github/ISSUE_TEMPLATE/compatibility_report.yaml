@@ -1,0 +1,44 @@
+name: Compatibility Report
+description: Report compatibility results with supported software.
+title: "[COMPATIBILITY] "
+labels:
+  - compatibility
+
+body:
+  - type: dropdown
+    id: software
+    attributes:
+      label: Software
+      options:
+        - Creo
+        - ANSYS Workbench
+        - OpenFOAM
+        - Excel
+        - Python
+
+  - type: input
+    id: version
+    attributes:
+      label: Version Tested
+    validations:
+      required: true
+
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      options:
+        - Fully Working
+        - Partially Working
+        - Not Working
+
+  - type: input
+    id: operating_system
+    attributes:
+      label: Operating System
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Describe any limitations or issues encountered.

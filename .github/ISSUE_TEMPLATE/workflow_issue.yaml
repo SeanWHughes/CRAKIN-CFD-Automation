@@ -1,0 +1,72 @@
+name: Workflow Issue
+description: Problems with CAD/CAE workflow execution.
+title: "[WORKFLOW] "
+labels:
+  - workflow
+
+body:
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Workflow
+      options:
+        - Excel → Creo
+        - Excel → ANSYS
+        - Creo → Excel
+        - Creo → ANSYS
+        - ANSYS → Excel
+        - ANSYS → OpenFOAM
+        - Full Pipeline
+        - Other
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What were you trying to accomplish?
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What Went Wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Workflow Behavior
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Relevant Files
+      description: Models, spreadsheets, cases, etc.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: shell
+
+  - type: input
+    id: creo
+    attributes:
+      label: Creo Version
+
+  - type: input
+    id: ansys
+    attributes:
+      label: ANSYS Version
+
+  - type: input
+    id: openfoam
+    attributes:
+      label: OpenFOAM Version
+      
+  - type: input
+    id: excel
+    attributes:
+      label: Excel Version

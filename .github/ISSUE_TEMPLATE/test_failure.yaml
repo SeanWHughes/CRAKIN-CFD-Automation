@@ -1,0 +1,43 @@
+name: Test Failure
+description: Report a failed automated or manual test.
+title: "[TEST] "
+labels:
+  - test
+
+body:
+  - type: input
+    id: test_name
+    attributes:
+      label: Test Name
+    validations:
+      required: true
+
+  - type: input
+    id: branch
+    attributes:
+      label: Branch
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Result
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Result
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Test Output / Logs
+      render: shell
