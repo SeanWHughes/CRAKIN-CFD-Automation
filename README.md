@@ -1,6 +1,6 @@
-# CRA:KIN | CFD Resource Administrator for Academics: Keep It Nimble
+# CRΛ:KIN | CFD Resource Allocation for Academics: Keep It Nimble
 
-Hey! What's crackin'?  
+Hey! What's crackin'?
 
 CRA:KIN is an automation tool to help researchers efficiently perform massive computational fluid dynamics (CFD) parameter optimization projects (or any other format of CFD design of experiments (DOE) work). It is designed to provide a simple, user-friendly interface and require minimal coding knowledge to successfully use for your CFD project. Oftentimes, CFD geometry optimization problems can explode in complexity, and researchers must spend hours of their time doing repetitious work in numerous software packages to generating their dataset. CRA:KIN, just like the mythical aquatic creature, will wrap itself around each one of these critical softwares and power through your CFD project.
 
