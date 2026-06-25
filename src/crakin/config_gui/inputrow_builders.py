@@ -81,9 +81,6 @@ class InputRowBuilder:
         # Require a FilepathInputRowSpec for the builder spec
         spec.require_spectype(irBP.FilepathInputRowSpec)
         
-        # Extract filepath config values from config.json
-        cfg_pull_values = cfg_app_obj.config_get(ctx.cfg_key) or {}
-        
         # Initialize row element builder
         subbuilder = InputRowElementBuilder(ctx, spec)
         
@@ -93,7 +90,7 @@ class InputRowBuilder:
             subbuilder.build_tooltip_label()
         
         # Build filepath entry widget and browser button
-        fp_UIvars, fp_wgs = subbuilder.build_filepath_UI_widgets(cfg_pull_values)
+        fp_UIvars, fp_wgs = subbuilder.build_filepath_UI_widgets()
         
         # Return registered InputRow object
         return InputRowBuilder._register_inputrow(
@@ -115,9 +112,6 @@ class InputRowBuilder:
         # Require a ConditionInputRowSpec for the builder spec
         spec.require_spectype(irBP.ConditionInputRowSpec)
         
-        # Extract condition config values from config.json
-        cfg_pull_values = cfg_app_obj.config_get(ctx.cfg_key) or {}
-        
         # Initialize row element builder
         subbuilder = InputRowElementBuilder(ctx, spec)
         
@@ -127,7 +121,7 @@ class InputRowBuilder:
             subbuilder.build_tooltip_label()
             
         # Build conditional statement entry
-        cond_UIvars, cond_wgs = subbuilder.build_condition_UI_widgets(cfg_pull_values)
+        cond_UIvars, cond_wgs = subbuilder.build_condition_UI_widgets()
         
         # Return registered InputRow object
         return InputRowBuilder._register_inputrow(

@@ -168,7 +168,7 @@ class InputRowElementBuilder:
             # Insert the tooltip text as a label within the tooltip container
             hovertxt_label_wg = ttk.Label(
                 tip_toplvl_wg,
-                text=self.hover_text
+                text=self.hover_text,
                 **self.spec.hover_label_wg_kwargs
             )
             hovertxt_label_wg.pack()
@@ -191,7 +191,7 @@ class InputRowElementBuilder:
         pin_label_wg.bind("<Enter>", _show_tooltip)
         pin_label_wg.bind("<Leave>", _hide_tooltip)
 
-    def build_filepath_UI_widgets(self, cfg_pull_values):
+    def build_filepath_UI_widgets(self):
         """
         Method used to build an OS filepath input row with an entry widget
         and a browser button that populates the filepath string into the entry 
@@ -217,9 +217,6 @@ class InputRowElementBuilder:
         # III. UI VARS: Create variables for user-input values
         # Initialize a string variable for UI text
         fp_entry_UIvar = tk.StringVar()
-        
-        # Populate UI variable with value from config.json
-        fp_entry_UIvar.set(cfg_pull_values.get("path", ""))
         
         # IV: BUILD: Build all necessary widgets
         # Build input frame to contain all filepath input widgets
@@ -297,7 +294,7 @@ class InputRowElementBuilder:
         
         return fp_UIvars, fp_wgs
     
-    def build_condition_UI_widgets(self, cfg_pull_values):
+    def build_condition_UI_widgets(self):
         """
         Method used to build a conditional statement and prevents nonsensical
         conditions using combobox and entry widgets.
@@ -317,13 +314,6 @@ class InputRowElementBuilder:
         center_entry_UIvar = tk.StringVar()
         RHS_cbb_UIvar = tk.StringVar()
         RHS_entry_UIvar = tk.StringVar()
-        
-        # Populate UI variable with value from config.json
-        LHS_entry_UIvar.set(cfg_pull_values.get("LHS_entry", ""))
-        LHS_cbb_UIvar.set(cfg_pull_values.get("LHS_op", ""))
-        center_entry_UIvar.set(cfg_pull_values.get("center_entry", ""))
-        RHS_cbb_UIvar.set(cfg_pull_values.get("RHS_op", ""))
-        RHS_entry_UIvar.set(cfg_pull_values.get("RHS_entry", ""))
 
         # IV: BUILD: Build all necessary widgets     
         # Build input frame to contain all conditional statement input widgets
@@ -461,8 +451,8 @@ class InputRowElementBuilder:
         
         def _safe_get(widget, UIvar):
             """
-            Private function that returns an empty string for disabled widgets
-            rather than altering the UI variable itself.
+            Private function that returns nothing for disabled widgets rather
+            than altering the UI variable itself.
             """
             if widget.cget("state") == "disabled":
                 return None

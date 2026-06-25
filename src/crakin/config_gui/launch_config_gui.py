@@ -144,14 +144,11 @@ app = cfgio.ConfigSetupApp(config_path=config_path, arch=cfg_arch)
 # Load config.json file it if it exists, otherwise run initializiation routine
 if not config_path.exists():
     app.init_config(work_dir=WORK_DIR)
-# Load config after all widgets have been created ---
-else:
-    app.load_config()
     
 #%%     GUI WINDOW CONSTRUCTION
 
 # Construct main window object that will display the GUI
-gui = gui_core.GUIBootstrap(GUIwidth=1500, GUIheight=1000, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
+gui = gui_core.GUIBootstrap(GUIwidth=1600, GUIheight=900, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
 
 # Initialize row index for the main GUI window
 main_row = 0
@@ -235,6 +232,9 @@ for group, fields in cfg_arch.items():
 
             # Increment row counter twice to account for the input row the add button(s) row
             main_row += 2
+            
+# Load all prior values from config.json into the GUI
+app.load_config()
 
 #%%     MISC. GUI WIDGETS
 

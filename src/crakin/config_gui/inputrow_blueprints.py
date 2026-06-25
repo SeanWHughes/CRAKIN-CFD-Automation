@@ -145,14 +145,14 @@ class BaseInputRowSpec:
         self.pin_label_wg_kwargs.setdefault("anchor", "e")
         
         # Set default grid options for pin label widget
-        self.pin_label_grid_kwargs.setdefault("padx", 5)
-        self.pin_label_grid_kwargs.setdefault("pady", 5)
+        self.pin_label_grid_kwargs.setdefault("padx", 10)
+        self.pin_label_grid_kwargs.setdefault("pady", 10)
         self.pin_label_grid_kwargs.setdefault("sticky", "e")
         
         # Set default widget options for hover label widget
         self.hover_label_wg_kwargs.setdefault("style", "ToolTip.TLabel")
         self.hover_label_wg_kwargs.setdefault("justify", "left")
-        self.hover_label_wg_kwargs.setdefault("wraplength", 350)
+        self.hover_label_wg_kwargs.setdefault("wraplength", 500)
         self.hover_label_wg_kwargs.setdefault("padding", 6)
         
         # Set default grid options for input frame widget

@@ -69,11 +69,19 @@ class ConfigSetupApp:
                     # Check for the config cache row within the inputrow object dictionary
                     IR_key = (group, field, rowid)
     
+                    # Check if inputrow exists in build dictionary
                     if IR_key in self.inputrow_objs:
-                        ir = self.inputrow_objs[IR_key]
+                        ir_obj = self.inputrow_objs[IR_key]
                         
-                        ir.cfg_pull_values = values.copy()
-                        ir.cfg_last_modified = last_modified
+                        # Update last_modified
+                        ir_obj.cfg_last_modified = last_modified
+                        
+                        # Update UIvars values
+                        for key, value in values.items():
+                            ui_var = ir_obj.UIvars.get(key)
+                    
+                            if ui_var is not None:
+                                ui_var.set(value)
     
         # Clear the internal registry for modified rows 
         self._modified_inputrows.clear()
@@ -84,17 +92,17 @@ class ConfigSetupApp:
         cfg_push_values = {}
 
         # Loop through every inputrow that was built and added to the config app
-        for inputrow in self.inputrow_objs.values():
+        for ir_obj in self.inputrow_objs.values():
     
             # Extract context
-            group = inputrow.ctx.cfg_group
-            field = inputrow.ctx.cfg_field
-            rowid = inputrow.ctx.cfg_rowid
-            parent_rowid = inputrow.ctx.cfg_parent_rowid
-            IR_key = inputrow.ctx.cfg_key
+            group = ir_obj.ctx.cfg_group
+            field = ir_obj.ctx.cfg_field
+            rowid = ir_obj.ctx.cfg_rowid
+            parent_rowid = ir_obj.ctx.cfg_parent_rowid
+            IR_key = ir_obj.ctx.cfg_key
             
-            # Extract spec
-            spectype = inputrow.spec.cfg_spectype
+            # Extract spec type
+            spectype = ir_obj.spec.cfg_spectype
             
             # Initialize the current InputRow's groups and fields as empty dicts
             cfg_push_values.setdefault(group, {})
@@ -104,11 +112,14 @@ class ConfigSetupApp:
             if IR_key in self._modified_inputrows:
                 last_modified = datetime.now().strftime(self._timefmt)
             else:
-                last_modified = inputrow.cfg_last_modified
+                last_modified = ir_obj.cfg_last_modified
+            
+            # Initialize a UIvars values dictionary
+            values = {}
             
             # Extract values from UI variables
-            for UIvar, value in inputrow.UIvars.items():
-                values = {UIvar: value.get()}
+            for UIvar, value in ir_obj.UIvars.items():
+                values[UIvar] = value.get()
     
             # Add InputRow data to the push values staging dictionary
             cfg_push_values[group][field][rowid] = {
@@ -163,8 +174,7 @@ class ConfigSetupApp:
                         "ROW_ID": str(row_id),
                         "ROW_TYPE": "filepath",
                         "VALUES": {
-                            "path": str(work_dir),
-                            "mode": "folder"
+                            "fp_entry_UIvar": str(work_dir)
                         },
                         "LAST_MODIFIED": self._datetime_stamp()
                     }
