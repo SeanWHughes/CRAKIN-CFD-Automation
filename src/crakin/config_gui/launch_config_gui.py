@@ -32,7 +32,7 @@ import gui_core
 
 # Define config architecture (i.e. the config.json groups and field names)
 cfg_arch = {
-    "PROJECT": ["WORK_DIR", "DOE_PROJ_DIR", "OF_CASE_DIR_TEMPLATE"],
+    "PROJECT": ["TOOL_ROOT", "DOE_PROJ_DIR", "OF_CASE_DIR_TEMPLATE"],
     "CREO": ["CREO_MODEL_FP", "CREO_EXE_FP", "CREOSON_DIR"],
     "ANSYS": ["WB_PROJ_FP", "WB_EXE_FP"]
 }
@@ -40,13 +40,13 @@ cfg_arch = {
 # Define field info for the GUI
 field_info = {}
 
-field_info["WORK_DIR"] = {
-    "label": "Working Directory",
+field_info["TOOL_ROOT"] = {
+    "label": "CRA:KIN Root Directory",
     "help_text": (
-        "The working directory should be set to whatever directory this script "
+        "The root directory should be set to whatever directory this tool "
         "is stored inside. Normally, this field is populated automatically by "
         "the script. However, if the script couldn't find the directory, you "
-        "can always enter the working directory here instead."
+        "can always enter the CRA:KIN root directory here instead."
     ),
     "mode": "folder",
 }
@@ -123,32 +123,13 @@ field_info["WB_EXE_FP"] = {
 
 #%%     CONFIG INITIALIZATION
 
-# Try to find correct working directory
-try:
-    # If running outside IDE, try to get working directory from script location
-    SCRIPT_FP = Path(__file__).resolve()
-    WORK_DIR = SCRIPT_FP.parent
-except NameError:
-    # If running inside IDE, try to assign current working directory from default
-    WORK_DIR = Path.cwd().resolve()
-    SCRIPT_FP = WORK_DIR / "setup_config.py"
-if not Path(SCRIPT_FP).exists():
-    print("WARNING: Could not determine the script location. Please set WORK_DIR variable manually.")
-
-# Try to find config.json file
-config_path = Path("config.json").resolve()
-
 # Instantiate config setup app object
-app = cfgio.ConfigSetupApp(config_path=config_path, arch=cfg_arch)
-
-# Load config.json file it if it exists, otherwise run initializiation routine
-if not config_path.exists():
-    app.init_config(work_dir=WORK_DIR)
+app = cfgio.ConfigSetupApp(arch=cfg_arch)
     
 #%%     GUI WINDOW CONSTRUCTION
 
 # Construct main window object that will display the GUI
-gui = gui_core.GUIBootstrap(GUIwidth=1600, GUIheight=900, title="DOE CFD Automation - Setup Configuration", global_font="Segoe UI")
+gui = gui_core.GUIBootstrap(GUIwidth=1550, GUIheight=950, title="CRA:KIN CFD Automation - Setup Configuration", global_font="Segoe UI")
 
 # Initialize row index for the main GUI window
 main_row = 0
@@ -156,8 +137,8 @@ main_row = 0
 # Create a short instructional label at top of GUI
 ltxt = ("Populate the fields below with the absolute filepaths for your "
         "CFD setup (manually or using the browser dialogs).")
-label = ttk.Label(gui.scroll_frame, text=ltxt, font=("Segoe UI", 10), width=95)
-label.grid(row=main_row, column=2, pady=20, sticky="")
+label = ttk.Label(gui.scroll_frame, text=ltxt, font=("Segoe UI", 10), wraplength=1000)
+label.grid(row=main_row, column=2, pady=20, sticky="w")
 
 # Increment main window row index
 main_row += 1

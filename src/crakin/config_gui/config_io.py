@@ -19,14 +19,17 @@ class ConfigSetupApp:
     single app object to simplify GUI-config.json variable handling.
     """
 
-    def __init__(self, config_path, arch):
+    def __init__(self, arch):
         """
         Constructor method used to initialize new config object instances.
         """
 
-        # Extract inputs
-        self.config_path = config_path
+        # Extract config architecture
         self.arch = arch
+        
+        # Initialize paths
+        self.CONFIG_PATH = Path("config.json").resolve()
+        self.TOOL_ROOT = self._find_project_wd()
 
         # Initialize a dictionary cache to store every built input row object during runtime
         self.inputrow_objs = {}
@@ -40,21 +43,65 @@ class ConfigSetupApp:
         # Internal variable for setting timestamp format
         self._timefmt = "%m-%d-%Y %H:%M:%S"
         
+        # Config load flag for modification tracking
+        self._loading_config = False
+        
+        # If config.json file doesn't exist, run initializiation routine
+        if not self.CONFIG_PATH.exists():
+            self.init_config()
+    
+    def _find_project_wd(self):
+        """
+        Private method for trying to find correct project root directory
+        """
+        
+        # If running outside IDE, try to get this file's filepath from __file__ variable
+        try:
+            MY_FP = Path(__file__).resolve()
+        # If running inside IDE, try to get this file's filepath from Python's current working directory    
+        except NameError:
+            MY_FP = Path.cwd().resolve() / "setup_config.py"
+
+        # Throw a warning if the current file's filepath wasn't found
+        if not Path(MY_FP).exists():
+            print("WARNING: Could not determine the script location. Please set TOOL_ROOT variable manually.")
+
+        # Establish project root directory via essential root directory contents
+        for parent in [MY_FP] + list(MY_FP.parents):
+            if (parent / ".git").exists():
+                return parent
+            elif (parent / "pyproject.toml").exists():
+                return parent
+        
+        # Raise an error if it couldn't find the project root directory
+        raise RuntimeError("Couldn't find CRA:KIN root directory")
+    
     def mark_mods(self, cfg_key):
         """
         Adds a modified inputrow to the internal set.
         """
         
+        # Don't mark as modification if loading values from config.json
+        if self._loading_config:
+            return
+
         self._modified_inputrows.add(cfg_key)
 
     def load_config(self):
-
+        """
+        Loads all previous values from the config.json file into the GUI
+        widgets so that they persist on save if they weren't modified.
+        """
+        
+        # Flag for loading
+        self._loading_config = True
+        
         # Check if the config.json file exists
-        if not Path(self.config_path).exists():
+        if not Path(self.CONFIG_PATH).exists():
             return
         
         # Load config.json contents into the internal cache
-        with open(self.config_path, "r") as f:
+        with open(self.CONFIG_PATH, "r") as f:
             self._config_cache = json.load(f)
         
         # Loop through every unique row ID within the config cache
@@ -80,11 +127,11 @@ class ConfigSetupApp:
                         for key, value in values.items():
                             ui_var = ir_obj.UIvars.get(key)
                     
-                            if ui_var is not None:
+                            if ui_var is not None and value is not None:
                                 ui_var.set(value)
     
-        # Clear the internal registry for modified rows 
-        self._modified_inputrows.clear()
+        # Unflag for loading
+        self._loading_config = False
 
     def save_config(self, container):
     
@@ -104,7 +151,7 @@ class ConfigSetupApp:
             # Extract spec type
             spectype = ir_obj.spec.cfg_spectype
             
-            # Initialize the current InputRow's groups and fields as empty dicts
+            # Initialize the group and field for this InputRow if it hasn't been already by another InputRow
             cfg_push_values.setdefault(group, {})
             cfg_push_values[group].setdefault(field, {})
     
@@ -112,14 +159,44 @@ class ConfigSetupApp:
             if IR_key in self._modified_inputrows:
                 last_modified = datetime.now().strftime(self._timefmt)
             else:
-                last_modified = ir_obj.cfg_last_modified
+                last_modified = ir_obj.cfg_last_modified or self._datetime_stamp()
             
-            # Initialize a UIvars values dictionary
+            # Initialize this InputRow's values dictionary
             values = {}
             
+            # Convert key-value pairs from widgets and UIvars dicts to list of tuples
+            widget_items = list(ir_obj.widgets.items())
+            UIvar_items = list(ir_obj.UIvars.items())
+            
             # Extract values from UI variables
-            for UIvar, value in ir_obj.UIvars.items():
-                values[UIvar] = value.get()
+            for i, (UIvar_name, UIvar) in enumerate(UIvar_items):
+                
+                # Try getting matching widget by naming convention first
+                widget_name = UIvar_name.replace("UIvar", "wg")
+                widget = ir_obj.widgets.get(widget_name)
+                
+                # If this fails, match widget by it's dictionary position
+                if widget is None and i < len(widget_items):
+                    _, widget = widget_items[i]
+                    
+                    print(f"WARNING: UIvar, {UIvar_name}, couldn't be associated ",
+                          "with it's widget by naming convention. Using dictionary ",
+                          "position for matching instead; please fix UIvar and ",
+                          "widget naming to match codebase style conventions ",
+                          "in the future.")
+                
+                # Get raw UIvar value
+                raw_val = UIvar.get()
+            
+                # Set value to none if widget is disabled
+                if widget.cget("state") == "disabled":
+                    values[UIvar_name] = None
+                # Set value to none if empty string
+                elif isinstance(raw_val, str) and raw_val.strip() == "":
+                    values[UIvar_name] = None
+                # Otherwise use UIvar value
+                else:
+                    values[UIvar_name] = raw_val
     
             # Add InputRow data to the push values staging dictionary
             cfg_push_values[group][field][rowid] = {
@@ -131,7 +208,7 @@ class ConfigSetupApp:
             }
     
         # After the staging dictionary has been filled, push changes to the config.json
-        with open(self.config_path, "w", encoding="utf-8") as f:
+        with open(self.CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(cfg_push_values, f, indent=4)
     
         # Clear the internal registry for modified rows
@@ -141,12 +218,12 @@ class ConfigSetupApp:
         if container:
             messagebox.showinfo(
                 "Configuration Saved",
-                f"Configuration successfully saved to {self.config_path}"
+                f"Configuration successfully saved to {self.CONFIG_PATH}"
             )
     
             container.winfo_toplevel().destroy()
 
-    def init_config(self, work_dir):
+    def init_config(self):
         """
         Method for creating a config.json file with the specified sections and
         fields from the config architecture. Field values are initialized as
@@ -166,22 +243,22 @@ class ConfigSetupApp:
                 # Create empty row container for this field
                 self.config_json_dict[section][field] = {}
     
-                # Initialize WORK_DIR with a default filepath row
-                if field == "WORK_DIR":
+                # Initialize TOOL_ROOT with a default filepath row
+                if field == "TOOL_ROOT":
     
                     self.config_json_dict[section][field][str(row_id)] = {
                         "PARENT": None,
                         "ROW_ID": str(row_id),
                         "ROW_TYPE": "filepath",
                         "VALUES": {
-                            "fp_entry_UIvar": str(work_dir)
+                            "fp_entry_UIvar": str(self.TOOL_ROOT)
                         },
                         "LAST_MODIFIED": self._datetime_stamp()
                     }
     
                     row_id += 1
     
-        with open(self.config_path, "w", encoding="utf-8") as f:
+        with open(self.CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(self.config_json_dict, f, indent=4)
 
     def config_get(self, cfg_key):

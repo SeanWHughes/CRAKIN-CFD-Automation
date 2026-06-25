@@ -47,9 +47,27 @@ class InputRowBuilder:
     """
     
     @staticmethod
+    def _attach_modification_traces(inputrow_obj: InputRow,
+                                    cfg_app_obj: ConfigSetupApp):
+        """
+        Private method for attaching a trace to each UIvar to track whether
+        it has been modified
+        """
+        for ui_var in inputrow_obj.UIvars.values():
+            if ui_var is not None:
+                ui_var.trace_add(
+                    "write", 
+                    lambda *args, 
+                    key=inputrow_obj.ctx.cfg_key:
+                    cfg_app_obj.mark_mods(key)
+                )
+    
+    @staticmethod
     def _register_inputrow(ctx: irBP.BaseInputRowContext, 
-                           spec: irBP.ConditionInputRowSpec, 
-                           widgets, UIvars, cfg_app_obj):
+                           spec: irBP.ConditionInputRowSpec,  
+                           cfg_app_obj: ConfigSetupApp,
+                           widgets, 
+                           UIvars):
         """
         Private method for creating and then registering an InputRow object.
         """
@@ -73,7 +91,7 @@ class InputRowBuilder:
     @staticmethod
     def build_fp_inputrow(ctx: irBP.FilepathInputRowContext, 
                           spec: irBP.FilepathInputRowSpec, 
-                          cfg_app_obj):
+                          cfg_app_obj: ConfigSetupApp):
         """
         Method for building filepath input rows into the GUI.
         """
@@ -92,14 +110,20 @@ class InputRowBuilder:
         # Build filepath entry widget and browser button
         fp_UIvars, fp_wgs = subbuilder.build_filepath_UI_widgets()
         
-        # Return registered InputRow object
-        return InputRowBuilder._register_inputrow(
+        # Construct InputRow and register it with the config app
+        inputrow_obj = InputRowBuilder._register_inputrow(
             ctx=ctx, 
             spec=spec, 
+            cfg_app_obj=cfg_app_obj,
             widgets=fp_wgs, 
-            UIvars=fp_UIvars, 
-            cfg_app_obj=cfg_app_obj
+            UIvars=fp_UIvars
         )
+        
+        # Add modification trackers to UIvars
+        InputRowBuilder._attach_modification_traces(inputrow_obj, cfg_app_obj)
+        
+        # Return InputRow object
+        return inputrow_obj
         
     @staticmethod
     def build_cond_inputrow(ctx: irBP.ConditionInputRowContext, 
@@ -123,11 +147,17 @@ class InputRowBuilder:
         # Build conditional statement entry
         cond_UIvars, cond_wgs = subbuilder.build_condition_UI_widgets()
         
-        # Return registered InputRow object
-        return InputRowBuilder._register_inputrow(
+        # Construct InputRow and register it with the config app
+        inputrow_obj = InputRowBuilder._register_inputrow(
             ctx=ctx, 
-            spec=spec, 
+            spec=spec,  
+            cfg_app_obj=cfg_app_obj,
             widgets=cond_wgs, 
-            UIvars=cond_UIvars, 
-            cfg_app_obj=cfg_app_obj
+            UIvars=cond_UIvars
         )
+        
+        # Add modification trackers to UIvars
+        InputRowBuilder._attach_modification_traces(inputrow_obj, cfg_app_obj)
+        
+        # Return InputRow object
+        return inputrow_obj

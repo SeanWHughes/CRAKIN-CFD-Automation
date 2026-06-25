@@ -104,6 +104,8 @@ class BaseInputRowSpec:
     tooltip_label_kwargs: dict = field(default_factory=dict)
     input_frame_kwargs: dict = field(default_factory=dict)
     
+    box_ipady: int = 5
+    
     def __post_init__(self):
         """ 
         Post-construction method for every type of input rows.
@@ -155,12 +157,8 @@ class BaseInputRowSpec:
         self.hover_label_wg_kwargs.setdefault("wraplength", 500)
         self.hover_label_wg_kwargs.setdefault("padding", 6)
         
-        # Set default grid options for input frame widget
+        # Set default widget options for input frame widget
         self.input_frame_wg_kwargs.setdefault("style", "Input.TFrame")
-        self.input_frame_grid_kwargs.setdefault("padx", 2)
-        self.input_frame_grid_kwargs.setdefault("pady", 3)
-        self.input_frame_grid_kwargs.setdefault("ipadx", 5)
-        self.input_frame_grid_kwargs.setdefault("ipady", 5)
     
     def _validate_grids(self, grid_list):
         """
@@ -229,11 +227,10 @@ class FilepathInputRowSpec(BaseInputRowSpec):
         # II. DEFAULTS: assign default keyword arguments
         # Set default widget options for filepath entry widget
         self.fp_entry_wg_kwargs.setdefault("style", "Default.TEntry")
-        self.fp_entry_wg_kwargs.setdefault("width", 90)
+        self.fp_entry_wg_kwargs.setdefault("width", 80)
         
         # Set default grid options for filepath entry widget
         self.fp_entry_grid_kwargs.setdefault("padx", 5)
-        self.fp_entry_grid_kwargs.setdefault("pady", 5)
         self.fp_entry_grid_kwargs.setdefault("sticky", "")
 
         # Set default widget options for browser button widget
@@ -242,7 +239,6 @@ class FilepathInputRowSpec(BaseInputRowSpec):
         
         # Set default grid options for browser button widget
         self.browse_btn_grid_kwargs.setdefault("padx", 5)
-        self.browse_btn_grid_kwargs.setdefault("pady", 5)
         self.browse_btn_grid_kwargs.setdefault("sticky", "")
         
         # III. CLEANUP: remove/override some keyword arguments or throw error
@@ -290,9 +286,11 @@ class ConditionInputRowSpec(BaseInputRowSpec):
         self.LRHS_entry_grid_kwargs = self.LRHS_entry_kwargs.get("grid", {})
         
         # II. DEFAULTS: assign default keyword arguments
+        self.LRHS_entry_wg_kwargs.setdefault("style", "Default.TEntry")
         self.LRHS_entry_wg_kwargs.setdefault("width", 8)
         self.LRHS_entry_grid_kwargs.setdefault("padx", 2)
         
+        self.center_entry_wg_kwargs.setdefault("style", "Default.TEntry")
         self.center_entry_wg_kwargs.setdefault("width", 25)
         self.center_entry_grid_kwargs.setdefault("padx", 5)
         

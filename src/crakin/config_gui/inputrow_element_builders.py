@@ -44,24 +44,30 @@ class InputRowElementBuilder:
             self.ctx.hover_text,
             self.spec.hover_label_wg_kwargs.get("text")
         )
+    def _build_inputframe(self, row, column):
+        """
+        Private method for building the standard input frame to house all
+        UIvar widgets.
+        """
+        
+        input_frame_wg = ttk.Frame(
+            self.container,
+            **self.spec.input_frame_wg_kwargs
+        )
+        input_frame_wg.grid(
+            row=row,
+            column=column,
+            **self.spec.input_frame_grid_kwargs
+        )
+        input_frame_wg['padding'] = 10
+        
+        return input_frame_wg
 
     def _resolve_option(self, ctx_value, spec_value):
         """
         Context overrides spec.
         """
         return ctx_value if ctx_value is not None else spec_value            
-
-    def _note_modifications(self, widget):
-        """
-        Marks row as modified in ConfigSetupApp.
-        """
-    
-        # Walk up references safely
-        try:
-            app = self.container.winfo_toplevel().app_ref
-            app.mark_mods(self.ctx.cfg_key)
-        except Exception:
-            pass
         
     def _adjust_cellsizes(self, input_frame_wg, 
                           row_range: Tuple[int, int] | int, 
@@ -211,8 +217,8 @@ class InputRowElementBuilder:
             raise ValueError(f"browse_mode must be 'file' or 'folder, invalid value: {self.browse_mode}")
         
         # II. CONTEXT: Set row and column
-        row_id = self.row_ind
-        col_id = self.base_col_ind + 2
+        row_ind = self.row_ind
+        col_ind = self.base_col_ind + 2
         
         # III. UI VARS: Create variables for user-input values
         # Initialize a string variable for UI text
@@ -220,21 +226,13 @@ class InputRowElementBuilder:
         
         # IV: BUILD: Build all necessary widgets
         # Build input frame to contain all filepath input widgets
-        input_frame_wg = ttk.Frame(
-            self.container,
-            **self.spec.input_frame_wg_kwargs
-        )
-        input_frame_wg.grid(
-            row=row_id,
-            column=col_id,
-            **self.spec.input_frame_grid_kwargs
-        )
+        input_frame_wg = self._build_inputframe(row=row_ind, column=col_ind)
         
         # Resize cells according to widget
         self._adjust_cellsizes(
             input_frame_wg, 
             row_range=0, 
-            col_range=(self.base_col_ind, col_id)
+            col_range=(self.base_col_ind, col_ind)
         )
         
         # Build filepath entry widget
@@ -282,10 +280,7 @@ class InputRowElementBuilder:
             **self.spec.browse_btn_grid_kwargs
         )
         
-        # V TRACE: Attach tracker to UI variable
-        fp_entry_UIvar.trace_add("write", lambda *args: self._note_modifications(fp_entry_wg))
-        
-        # VI OUTPUT: Package all outputs into dicts
+        # V OUTPUT: Package all outputs into dicts
         # Package UI variables
         fp_UIvars = {"fp_entry_UIvar": fp_entry_UIvar}
         
@@ -317,15 +312,7 @@ class InputRowElementBuilder:
 
         # IV: BUILD: Build all necessary widgets     
         # Build input frame to contain all conditional statement input widgets
-        input_frame_wg = ttk.Frame(
-            self.container,
-            **self.spec.input_frame_wg_kwargs
-        )
-        input_frame_wg.grid(
-            row=row_ind,
-            column=col_ind,
-            **self.spec.input_frame_grid_kwargs
-        )
+        input_frame_wg = self._build_inputframe(row=row_ind, column=col_ind)
         
         # Define options for boolean (relational) operators
         OPS = ["", "<", "<=", ">", ">=", "==", "!="]
@@ -347,7 +334,6 @@ class InputRowElementBuilder:
             input_frame_wg,
             textvariable=LHS_cbb_UIvar,
             values=OPS,
-            state="readonly",
             **self.spec.LRHS_cbb_wg_kwargs
         )
         LHS_cbb_wg.grid(
@@ -395,13 +381,6 @@ class InputRowElementBuilder:
         
         # Resize cells according to widget
         self._adjust_cellsizes(input_frame_wg, row_range=0, col_range=(0, 4))
-        
-        # V: TRACE: Attach trackers to UI variables
-        LHS_entry_UIvar.trace_add("write", lambda *args: self._note_modifications(input_frame_wg))
-        LHS_cbb_UIvar.trace_add("write", lambda *args: self._note_modifications(input_frame_wg))
-        center_entry_UIvar.trace_add("write", lambda *args: self._note_modifications(input_frame_wg))
-        RHS_cbb_UIvar.trace_add("write", lambda *args: self._note_modifications(input_frame_wg))
-        RHS_entry_UIvar.trace_add("write", lambda *args: self._note_modifications(input_frame_wg))
     
         def _update_condition_status():
             """
@@ -446,27 +425,17 @@ class InputRowElementBuilder:
                 RHS_entry_wg.config(state="normal")
 
         # Update the status of all entries in the row anytime a relational operator is changed
-        LHS_cbb_UIvar.trace_add("write", _update_condition_status)
-        RHS_cbb_UIvar.trace_add("write", _update_condition_status)
+        LHS_cbb_UIvar.trace_add("write", lambda *args: _update_condition_status())
+        RHS_cbb_UIvar.trace_add("write", lambda *args: _update_condition_status())
         
-        def _safe_get(widget, UIvar):
-            """
-            Private function that returns nothing for disabled widgets rather
-            than altering the UI variable itself.
-            """
-            if widget.cget("state") == "disabled":
-                return None
-            else:
-                return UIvar
-        
-        # VI OUTPUT: Package all outputs into dicts
+        # V OUTPUT: Package all outputs into dicts
         # Package UI variables
         cond_UIvars = {
-            "LHS_entry_UIvar": _safe_get(LHS_entry_wg, LHS_entry_UIvar),
-            "LHS_cbb_UIvar": _safe_get(LHS_cbb_wg, LHS_cbb_UIvar),
-            "center_entry_UIvar": _safe_get(center_entry_wg, center_entry_UIvar),
-            "RHS_cbb_UIvar": _safe_get(RHS_cbb_wg, RHS_cbb_UIvar),
-            "RHS_entry_UIvar": _safe_get(RHS_entry_wg, RHS_entry_UIvar)
+            "LHS_entry_UIvar": LHS_entry_UIvar,
+            "LHS_cbb_UIvar": LHS_cbb_UIvar,
+            "center_entry_UIvar": center_entry_UIvar,
+            "RHS_cbb_UIvar": RHS_cbb_UIvar,
+            "RHS_entry_UIvar": RHS_entry_UIvar
         }
         
         # Package widgets

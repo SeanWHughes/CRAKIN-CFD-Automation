@@ -67,8 +67,8 @@ class GUIBootstrap:
         # Frame widget styles
         style.configure(
             "Input.TFrame",
-            bordercolor="#A6C8FF",
-            relief="solid",
+            # bordercolor="#A6C8FF",
+            # relief="solid"
         )
 
         # Label widget styles
@@ -94,7 +94,7 @@ class GUIBootstrap:
         # Entry widget styles
         style.configure(
             "Default.TEntry",
-            padding=4,
+            padding=(5,5)
         )
         
         # Button widget styles
