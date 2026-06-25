@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Documentation
+    url: https://github.com/SeanWHughes/CRAKIN-CFD-Automation/wiki
+    about: Review the documentation before opening an issue.
+
+  - name: Discussions
+    url: https://github.com/SeanWHughes/CRAKIN-CFD-Automation/discussions
+    about: Ask questions and discuss workflows.
