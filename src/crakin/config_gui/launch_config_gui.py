@@ -41,12 +41,12 @@ cfg_arch = {
 field_info = {}
 
 field_info["TOOL_ROOT"] = {
-    "label": "CRA:KIN Root Directory",
+    "label": "CRΛ:KIN Root Directory",
     "help_text": (
         "The root directory should be set to whatever directory this tool "
         "is stored inside. Normally, this field is populated automatically by "
         "the script. However, if the script couldn't find the directory, you "
-        "can always enter the CRA:KIN root directory here instead."
+        "can always enter the CRΛ:KIN root directory here instead."
     ),
     "mode": "folder",
 }
@@ -129,7 +129,7 @@ app = cfgio.ConfigSetupApp(arch=cfg_arch)
 #%%     GUI WINDOW CONSTRUCTION
 
 # Construct main window object that will display the GUI
-gui = gui_core.GUIBootstrap(GUIwidth=1550, GUIheight=950, title="CRA:KIN CFD Automation - Setup Configuration", global_font="Segoe UI")
+gui = gui_core.GUIBootstrap(GUIwidth=1550, GUIheight=950, title="CRΛ:KIN CFD Automation - Setup Configuration", global_font="Segoe UI")
 
 # Initialize row index for the main GUI window
 main_row = 0

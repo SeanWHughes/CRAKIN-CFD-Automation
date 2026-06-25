@@ -74,7 +74,7 @@ class ConfigSetupApp:
                 return parent
         
         # Raise an error if it couldn't find the project root directory
-        raise RuntimeError("Couldn't find CRA:KIN root directory")
+        raise RuntimeError("Couldn't find CRAKIN root directory")
     
     def mark_mods(self, cfg_key):
         """
