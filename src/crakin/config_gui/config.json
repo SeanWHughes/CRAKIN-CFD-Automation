@@ -76,9 +76,44 @@
                 "ROW_ID": "7",
                 "ROW_TYPE": "filepath",
                 "VALUES": {
-                    "fp_entry_UIvar": null
+                    "fp_entry_UIvar": "C:/Users/Sean/Desktop/Nemours/Flow_Cell_Parameter_Optimization/WB-CP_FlowCell_ParOpt3.wbpj"
                 },
-                "LAST_MODIFIED": "06-25-2026 19:37:56"
+                "LAST_MODIFIED": "06-26-2026 11:09:54"
+            },
+            "7.1": {
+                "PARENT": "7",
+                "ROW_ID": "7.1",
+                "ROW_TYPE": "condition",
+                "VALUES": {
+                    "LHS_entry_UIvar": null,
+                    "LHS_cbb_UIvar": null,
+                    "center_entry_UIvar": null,
+                    "RHS_cbb_UIvar": null,
+                    "RHS_entry_UIvar": null
+                },
+                "LAST_MODIFIED": "07-01-2026 22:49:59"
+            },
+            "7.2": {
+                "PARENT": "7",
+                "ROW_ID": "7.2",
+                "ROW_TYPE": "filepath",
+                "VALUES": {
+                    "fp_entry_UIvar": "C:/Users/Sean/Desktop/Nemours/Flow_Cell_Parameter_Optimization/MISALIGNMENT STUDY/blood_misalign.wbpj"
+                },
+                "LAST_MODIFIED": "07-01-2026 22:49:59"
+            },
+            "7.3": {
+                "PARENT": "7",
+                "ROW_ID": "7.3",
+                "ROW_TYPE": "condition",
+                "VALUES": {
+                    "LHS_entry_UIvar": "10",
+                    "LHS_cbb_UIvar": "<",
+                    "center_entry_UIvar": "param_ans",
+                    "RHS_cbb_UIvar": ">",
+                    "RHS_entry_UIvar": "30"
+                },
+                "LAST_MODIFIED": "07-01-2026 22:49:59"
             }
         },
         "WB_EXE_FP": {
