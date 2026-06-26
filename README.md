@@ -1,4 +1,4 @@
-# CRΛ:KIN | CFD Resource Allocation for Academics: Keep It Nimble
+# CRΛ:KIN | CFD Resource Allocation for Academics: Keeping INterconnections
 
 Hey! What's crackin'?
 
